@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+        .se-veil {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%);
+        }
+        .se-bar {
+          position: absolute;
+          width: 6px;
+          border-radius: 3px;
+          background: rgba(40, 48, 60, 0.32);
+        }
+      </style>
+
+      <div id="root" data-composition-id="sc-example" data-width="1440" data-height="1080">
+        <div id="se-wrap" style="position: absolute; inset: 0"></div>
+      </div>
+
+      <script>
+        (function () {
+          /* STARTER — a rack-focus scene (index.html calls rack(20.0, 28.0) and portal("#pv-example", …)).
+             The footage blurs behind the glass; this scene draws a frosted player around the live window
+             (#pv-example: 426,318 · 588×338) and pins named problems to the exact part they belong to.
+             Headlines top-left use the spoken words, one serif-italic word each. Times are global → T(). */
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const W = document.getElementById("se-wrap");
+          const O = 19.9; // this host's data-start
+          const T = (g) => +(g - O).toFixed(2);
+
+          const veil = el("div", "se-veil", W);
+          tl.fromTo(veil, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, T(20.0));
+
+          // headlines: the actual spoken words, swapped phrase by phrase
+          K.text(tl, W, { x: 100, y: 64, a: "tl", lines: [{ s: 66, w: [["see it", T(20.1)], ["for", T(20.5)]] }, { s: 140, w: [["yourself", T(20.8), "s", "m"]] }], out: T(23.9), outMode: "fade" });
+          K.text(tl, W, { x: 100, y: 64, a: "tl", lines: [{ s: 66, w: [["you speak too", T(24.0)]] }, { s: 140, w: [["fast", T(24.6), "s", "m"]] }], out: T(27.7), outMode: "fade" });
+
+          // the frosted player around the live window
+          const card = K.fcard(W, { x: 396, y: 288, w: 648, h: 556 });
+          tl.fromTo(card.box, { opacity: 0, scale: 0.86, y: 40, filter: "blur(14px)" }, { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, T(20.05));
+          tl.set(card.box, { filter: "none" }, T(20.8));
+
+          // a waveform of the take under the window; played bars turn blue
+          const R = K.rng(7);
+          const bars = [];
+          for (let i = 0; i < 52; i++) {
+            const h = 14 + Math.round(R() * 44);
+            const b = el("div", "se-bar", W);
+            b.style.left = 452 + i * 10 + "px";
+            b.style.top = 792 - h / 2 + "px";
+            b.style.height = h + "px";
+            bars.push(b);
+            tl.set(b, { opacity: 0 }, 0);
+          }
+          tl.to(bars, { opacity: 1, duration: 0.3, ease: "power2.out", stagger: 0.008 }, T(20.6));
+          bars.forEach((b, i) => tl.to(b, { backgroundColor: "#3170e4", duration: 0.12, ease: "none" }, T(20.8) + (i / 51) * 6.5));
+
+          // "too fast": a speed chip rolls 1.0 → 1.6× and a dark state label pins to it (dashed connector + end dot)
+          const spd = K.fchip(tl, W, { x: 1012, y: 707, a: "r", text: '<span class="n" style="position:relative;display:inline-block;width:1.65em;height:1em"></span>×', t: T(20.7) });
+          K.roller(tl, spd.querySelector(".n"), { x: 0, y: 0, size: 31, values: ["1.0", "1.6"], times: [0, T(24.3)] });
+          const svg = K.fsvg(W, 1440, 1080);
+          K.flink(tl, svg, { pts: [[1018, 707], [1092, 707]], dash: true, dot0: true, t: T(24.5), d: 0.25 });
+          K.fchip(tl, W, { x: 1096, y: 707, text: "too fast", dot: true, t: T(24.6) });
+
+          // out with the rack back to the speaker
+          tl.to(W, { opacity: 0, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, T(27.7));
+
+          window.__timelines["sc-example"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

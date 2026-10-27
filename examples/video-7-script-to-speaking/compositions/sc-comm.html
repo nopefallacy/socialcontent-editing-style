@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+        .sc-veil {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%);
+        }
+        .sc-row {
+          position: absolute;
+          left: 0;
+          width: 512px;
+          height: 132px;
+        }
+        .sc-row + .sc-row {
+          border-top: 1.5px solid rgba(40, 48, 60, 0.1);
+        }
+        .sc-lb {
+          position: absolute;
+          left: 34px;
+          top: 44px;
+          font: 700 36px FigK, sans-serif;
+          letter-spacing: -0.015em;
+          color: #1d2026;
+          white-space: nowrap;
+        }
+        .sc-pct {
+          position: absolute;
+          width: 2.7em;
+          height: 1em;
+        }
+        .sc-out {
+          position: absolute;
+          font: 700 28px FigK, sans-serif;
+          color: rgba(28, 32, 40, 0.6);
+          white-space: nowrap;
+        }
+        .sc-badge {
+          position: absolute;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: #3170e4;
+          border: 4px solid #ffffff;
+          display: grid;
+          place-items: center;
+          box-shadow: 0 8px 18px rgba(49, 112, 228, 0.35);
+        }
+        .sc-badge svg {
+          width: 26px;
+          height: 26px;
+          fill: none;
+          stroke: #ffffff;
+          stroke-width: 3;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+      </style>
+
+      <div id="root" data-composition-id="sc-comm" data-width="1440" data-height="1080">
+        <div id="sc-wrap" style="position: absolute; inset: 0"></div>
+      </div>
+
+      <script>
+        (function () {
+          /* "it's communication, not word communication: your hand gestures, the silences, the expression in your face".
+             The viewer from fl-e is now the output of a switchboard (the reference's sources → toggles → Booked ✓):
+             Words is only one switch. Each input is a real frame of you; every switch you name turns on and
+             the share that reaches the viewer climbs 30 → 55 → 75 → 100%. */
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const W = document.getElementById("sc-wrap");
+          const O = 46.9;
+          const T = (g) => +(g - O).toFixed(2);
+
+          const veil = el("div", "sc-veil", W);
+          tl.fromTo(veil, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, T(47.0));
+          K.text(tl, W, { x: 100, y: 64, a: "tl", lines: [{ s: 66, w: [["it's", T(47.0)]] }, { s: 140, w: [["communication", T(47.64), "s", "m"]] }], out: T(49.04), outMode: "fade" });
+          K.text(tl, W, { x: 100, y: 64, a: "tl", lines: [{ s: 66, w: [["it's not about", T(49.14)]] }, { s: 104, w: [["word", T(50.04), "s", "m"], ["communication", T(50.36)]] }], out: T(51.28), outMode: "fade" });
+          K.text(tl, W, { x: 100, y: 64, a: "tl", lines: [{ s: 66, w: [["your hands,", T(51.68)], ["the silences,", T(52.98)]] }, { s: 120, w: [["your", T(53.98)], ["expression", T(54.26), "s", "m"]] }], out: T(55.6), outMode: "fade" });
+
+          // the switchboard
+          const C = { x: 360, y: 360, w: 540, h: 580 };
+          const card = K.fcard(W, C);
+          tl.fromTo(card.box, { opacity: 0, scale: 0.9, y: 40, filter: "blur(14px)" }, { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, T(47.1));
+          tl.set(card.box, { filter: "none" }, T(47.85));
+          const ROWS = [
+            ["Words", { icon: "type" }, T(50.04)],
+            ["Hand gestures", { src: "assets/frames/hands.jpg" }, T(51.98)],
+            ["Silences", { src: "assets/frames/silence.jpg" }, T(52.98)],
+            ["Expression", { src: "assets/frames/face.jpg" }, T(54.26)],
+          ];
+          const svg = K.fsvg(W, 1440, 1080);
+          const rowY = (i) => C.y + 14 + 12 + 132 * i + 66; // centre of row i on screen
+          ROWS.forEach(([label, src, t], i) => {
+            const r = el("div", "sc-row", card.inner);
+            r.style.top = 12 + 132 * i + "px";
+            const lb = el("div", "sc-lb", r);
+            lb.textContent = label;
+            const tg = K.ftoggle(tl, r, { x: 512 - 34 - 76, y: 44, on: false });
+            tl.set(r, { opacity: 0.42 }, 0);
+            // the input: a real frame of you, wired into its switch
+            const f = K.fface(W, Object.assign({ x: 210, y: rowY(i), d: 118 }, src));
+            tl.set(f, { opacity: 0 }, 0);
+            tl.fromTo(f, { opacity: 0, scale: 0.6, x: -30 }, { opacity: 1, scale: 1, x: 0, duration: 0.5, ease: "expo.out", immediateRender: false }, t - 0.2);
+            K.flink(tl, svg, { pts: [[276, rowY(i)], [C.x - 4, rowY(i)]], dot0: true, dot1: true, t: t - 0.05, d: 0.3 });
+            tg.set(true, t + 0.2);
+            tl.to(r, { opacity: 1, duration: 0.3, ease: "power2.out" }, t + 0.2);
+          });
+
+          // the output: the viewer, and how much of you reaches them
+          const V = { x: 1140, y: 610 };
+          K.flink(tl, svg, { pts: [[C.x + C.w + 4, V.y], [V.x - 92, V.y]], dot0: true, dot1: true, t: T(47.55), d: 0.45 });
+          const viewer = K.fface(W, { x: V.x, y: V.y, d: 168, icon: "user" });
+          tl.fromTo(viewer, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.55, ease: "expo.out" }, T(47.6));
+          const pct = el("div", "sc-pct", W);
+          pct.style.left = V.x - 92 + "px";
+          pct.style.top = V.y + 112 + "px";
+          K.roller(tl, pct, { x: 0, y: 0, size: 64, values: ["0%", "30%", "55%", "75%", "100%"], times: [0, ...ROWS.map((r) => r[2] + 0.25)] });
+          tl.fromTo(pct, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, T(47.9));
+          const out = el("div", "sc-out", W);
+          out.textContent = "understood";
+          out.style.left = V.x + "px";
+          out.style.top = V.y + 186 + "px";
+          tl.set(out, { xPercent: -50 }, 0);
+          tl.fromTo(out, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, T(48.0));
+          // "…in your face": all of it lands — a check on the viewer
+          const badge = el("div", "sc-badge", W);
+          badge.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+          badge.style.left = V.x + 44 + "px";
+          badge.style.top = V.y - 92 + "px";
+          tl.set(badge, { opacity: 0 }, 0);
+          tl.fromTo(badge, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.5, ease: "expo.out", immediateRender: false }, T(55.0));
+          tl.to(viewer, { borderColor: "#3170e4", duration: 0.35, ease: "power2.out" }, T(55.0));
+
+          tl.to(W, { opacity: 0, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, T(55.5));
+
+          window.__timelines["sc-comm"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

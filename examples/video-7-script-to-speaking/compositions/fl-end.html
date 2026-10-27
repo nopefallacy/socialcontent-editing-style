@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+        .fn-row {
+          position: absolute;
+          left: 0;
+          width: 492px;
+          height: 104px;
+        }
+        .fn-row + .fn-row {
+          border-top: 1.5px solid rgba(40, 48, 60, 0.1);
+        }
+        .fn-lb {
+          position: absolute;
+          left: 32px;
+          top: 32px;
+          font: 700 36px FigK, sans-serif;
+          letter-spacing: -0.015em;
+          color: #1d2026;
+          white-space: nowrap;
+        }
+        .fn-st {
+          position: absolute;
+          left: 28px;
+          top: 52px;
+          width: 128px;
+          height: 3px;
+          border-radius: 2px;
+          background: rgba(40, 48, 60, 0.6);
+          transform-origin: 0% 50%;
+        }
+        .fn-pct {
+          position: absolute;
+          right: 16px;
+          top: 15px;
+          height: 54px;
+          padding: 0 14px;
+          border-radius: 16px;
+          background: #16171b;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          font: 800 28px InterK, Inter, sans-serif;
+          letter-spacing: -0.03em;
+        }
+        .fn-pct .n {
+          position: relative;
+          width: 2.4em;
+          height: 1em;
+        }
+      </style>
+
+      <div id="root" data-composition-id="fl-end" data-width="1440" data-height="1080">
+        <div id="fn-wrap" style="position: absolute; inset: 0"></div>
+      </div>
+
+      <script>
+        (function () {
+          /* (1) "currently I don't do any scripting for the videos I make — I don't need that anymore":
+                 my videos · Script [on] · Talk to camera [on] — your cursor switches Script off.
+             (2) "if you need it, it's helpful · next: talking to camera without any script · not mastered yet ·
+                 learning · once I'm qualified · I'll share it with you": the workflow carries on —
+                 With a script ✓ → Without a script (running, 40 → 62%) → Share it with you (next). */
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const W = document.getElementById("fn-wrap");
+          const O = 90.9;
+          const T = (g) => +(g - O).toFixed(2);
+
+          /* ---------- (1) my videos ---------- */
+          const A = { x: 36, y: 380, w: 520, h: 340 };
+          const a = K.fcard(W, A);
+          tl.fromTo(a.box, { opacity: 0, y: 40, scale: 0.96, filter: "blur(14px)" }, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, T(91.3));
+          const hd = el("div", "fz-hd", a.inner);
+          hd.style.left = "32px";
+          hd.style.top = "26px";
+          hd.innerHTML = "my <em>videos</em>";
+          const r1 = el("div", "fn-row", a.inner);
+          r1.style.top = "84px";
+          r1.innerHTML = '<div class="fn-lb">Script</div><div class="fn-st"></div>';
+          const r2 = el("div", "fn-row", a.inner);
+          r2.style.top = "190px";
+          r2.innerHTML = '<div class="fn-lb">Talk to camera</div>';
+          const t1 = K.ftoggle(tl, r1, { x: 492 - 32 - 76, y: 30, on: true });
+          K.ftoggle(tl, r2, { x: 492 - 32 - 76, y: 30, on: true });
+          tl.set(r1.querySelector(".fn-st"), { scaleX: 0 }, 0);
+          // "any scripting": your cursor switches it off
+          const me = K.fcursor(tl, W, { name: "me", color: "#3170e4", x: 700, y: 760 });
+          const kx = A.x + 14 + 492 - 32 - 40,
+            ky = A.y + 14 + 84 + 52;
+          me.show(T(91.8));
+          me.moveTo(kx, ky, T(91.85), 0.6);
+          me.click(T(92.5));
+          t1.set(false, T(92.52));
+          tl.to(r1.querySelector(".fn-st"), { scaleX: 1, duration: 0.4, ease: "power3.out" }, T(92.6));
+          tl.to(r1, { opacity: 0.45, duration: 0.4, ease: "power2.out" }, T(92.7));
+          me.moveTo(kx + 60, ky + 90, T(93.2), 0.8);
+          // "because I don't need that anymore"
+          const svg = K.fsvg(W, 1440, 1080);
+          K.flink(tl, svg, { pts: [[A.x + A.w - 20, ky], [596, ky]], dash: true, dot0: true, t: T(95.1), d: 0.25 });
+          K.fchip(tl, W, { x: 600, y: ky, text: "don't need it", cls: "lite", t: T(95.26) });
+          tl.to([a.box, svg, me.el], { opacity: 0, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, T(95.9));
+          tl.to(W.querySelectorAll(".fs"), { opacity: 0, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, T(95.9));
+
+          /* ---------- (2) coming next ---------- */
+          const B = { x: 896, y: 392, w: 508, h: 466 };
+          const b = K.fcard(W, B);
+          tl.set(b.box, { height: 224 }, 0);
+          tl.to(b.box, { height: 342, duration: 0.55, ease: "expo.out" }, T(100.15));
+          tl.to(b.box, { height: B.h, duration: 0.55, ease: "expo.out" }, T(107.45));
+          tl.set(b.box, { opacity: 0 }, 0);
+          tl.fromTo(b.box, { opacity: 0, y: 40, scale: 0.96, filter: "blur(14px)" }, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out", immediateRender: false }, T(98.3));
+          const hb = el("div", "fz-hd", b.inner);
+          hb.style.left = "32px";
+          hb.style.top = "24px";
+          hb.innerHTML = "the <em>next</em> video";
+          tl.set(hb, { opacity: 0 }, 0);
+          tl.to(hb, { opacity: 1, duration: 0.4, ease: "power2.out" }, T(99.66));
+          const PX = 26,
+            PW = 428,
+            ROW = [84, 202, 320];
+          const bs = K.fsvg(b.inner, B.w - 28, B.h - 28);
+          const spine = PX + 44;
+          const P = [
+            K.fpill(tl, b.inner, { x: PX, y: ROW[0], w: PW, a: "l", label: "With a script", state: "ok" }),
+            K.fpill(tl, b.inner, { x: PX, y: ROW[1], w: PW, a: "l", label: "No script" }),
+            K.fpill(tl, b.inner, { x: PX, y: ROW[2], w: PW, a: "l", label: "Share it with you" }),
+          ];
+          tl.set(P.map((p) => p.el), { opacity: 0 }, 0);
+          // "if you need, it's helpful": the scripted way still works
+          tl.fromTo(P[0].el, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, T(98.6));
+          // "talking to camera without any script": the next step starts
+          K.flink(tl, bs, { pts: [[spine, ROW[0] + 84], [spine, ROW[1]]], t: T(100.2), d: 0.3 });
+          tl.fromTo(P[1].el, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, T(100.36));
+          P[1].to("run", T(100.5)).spin(T(100.5), T(110.6));
+          // "but I'm not mastered at it yet · I'm also trying to learn": how far along — 40 → 62%
+          const fill = el("div", "fill", P[1].el);
+          fill.style.width = PW + "px";
+          tl.set(fill, { scaleX: 0 }, 0);
+          tl.to(fill, { scaleX: 0.4, duration: 0.6, ease: "power3.out" }, T(104.44));
+          tl.to(fill, { scaleX: 0.62, duration: 0.6, ease: "power3.out" }, T(106.02));
+          const pc = el("div", "fn-pct", P[1].el);
+          pc.innerHTML = '<span class="n"></span>';
+          tl.set(pc, { opacity: 0 }, 0);
+          tl.fromTo(pc, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.4, ease: "expo.out", immediateRender: false }, T(104.44));
+          K.roller(tl, pc.querySelector(".n"), { x: 0, y: 0, size: 28, values: ["40%", "62%"], times: [0, T(106.02)] });
+          // "once I'm qualified enough · maybe I'll share it with you": the last step waits, ready
+          K.flink(tl, bs, { pts: [[spine, ROW[1] + 84], [spine, ROW[2]]], dash: true, t: T(107.5), d: 0.3 });
+          tl.fromTo(P[2].el, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, T(107.6));
+          tl.to(P[2].el.querySelector(".b-todo"), { borderColor: "#3170e4", backgroundColor: "rgba(49,112,228,0.1)", duration: 0.4, ease: "power2.out" }, T(109.1));
+          tl.to(P[2].el.querySelector(".lb"), { color: "#1f4ca8", duration: 0.4, ease: "power2.out" }, T(109.1));
+          tl.fromTo(P[2].el, { scale: 1 }, { keyframes: [{ scale: 1.05, duration: 0.2, ease: "power2.out" }, { scale: 1, duration: 0.5, ease: "power3.out" }], immediateRender: false }, T(109.1));
+
+          window.__timelines["fl-end"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

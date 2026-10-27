@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "SerifK";
+          src: url("assets/fonts/instrument-serif.woff2") format("woff2");
+          font-weight: 400;
+        }
+        @font-face {
+          font-family: "InterK";
+          src: url("assets/fonts/inter-800.woff2") format("woff2");
+          font-weight: 800;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+      </style>
+
+      <div id="root" data-composition-id="ov-c" data-width="1440" data-height="1080">
+        <div class="stage3d" id="oc-stage"></div>
+      </div>
+
+      <script>
+        (function () {
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const S = document.getElementById("oc-stage");
+          const O = 38.2;
+          const T = (g) => +(g - O).toFixed(2);
+
+          /*CAPTIONS:start*/
+          K.text(tl, S, { shot: "s7", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["because", 0.16], ["the", 1.48], ["ultimate", 2.18]] }, { s: 120, w: [["intention", 2.6, "b", "m"]] }, { s: 58, w: [["of", 3.1], ["the", 3.38], ["content", 3.54], ["is", 3.96]] }], out: 4.78, outMode: "fade" });
+          K.text(tl, S, { shot: "s7", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["to", 4.8], ["make", 5.02], ["the", 5.4], ["viewer", 5.9]] }, { s: 130, w: [["understand", 6.2, "b", "m"]] }], out: 6.8, outMode: "fade" });
+          K.text(tl, S, { shot: "s7", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["rather", 6.84], ["than", 7.24], ["just", 7.46]] }, { s: 120, w: [["telling", 7.66, "b", "m"]] }, { s: 58, w: [["anything.", 7.92]] }], out: 8.75, outMode: "fade" });
+          /*CAPTIONS:end*/
+
+          window.__timelines["ov-c"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

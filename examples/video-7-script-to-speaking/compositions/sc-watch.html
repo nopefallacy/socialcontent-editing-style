@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+        .sw-veil {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%);
+        }
+        .sw-play {
+          position: absolute;
+          left: 446px;
+          top: 680px;
+          width: 54px;
+          height: 54px;
+          border-radius: 50%;
+          background: #16171b;
+          display: grid;
+          place-items: center;
+        }
+        .sw-play svg {
+          width: 22px;
+          height: 22px;
+          fill: #ffffff;
+          margin-left: 3px;
+        }
+        .sw-track {
+          position: absolute;
+          left: 522px;
+          top: 703px;
+          width: 360px;
+          height: 8px;
+          border-radius: 4px;
+          background: rgba(40, 48, 60, 0.16);
+        }
+        .sw-fill {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 360px;
+          height: 8px;
+          border-radius: 4px;
+          background: #3170e4;
+          transform-origin: 0% 50%;
+        }
+        .sw-head {
+          position: absolute;
+          left: -9px;
+          top: -7px;
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 3px solid #3170e4;
+          box-shadow: 0 3px 8px rgba(20, 40, 80, 0.25);
+        }
+        .sw-spd {
+          position: absolute;
+          left: 904px;
+          top: 680px;
+          height: 54px;
+          padding: 0 18px;
+          border-radius: 16px;
+          background: #16171b;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          font: 700 28px FigK, sans-serif;
+        }
+        .sw-spd .n {
+          position: relative;
+          width: 1.65em;
+          height: 1em;
+        }
+        .sw-bar {
+          position: absolute;
+          width: 6px;
+          border-radius: 3px;
+          background: rgba(40, 48, 60, 0.32);
+        }
+      </style>
+
+      <div id="root" data-composition-id="sc-watch" data-width="1440" data-height="1080">
+        <div id="sw-wrap" style="position: absolute; inset: 0"></div>
+      </div>
+
+      <script>
+        (function () {
+          /* "see for yourself what problems naturally happen": the camera dives into Watch it back.
+             Your take plays in a frosted player (the live window #pv-watch sits in its top half), the room behind
+             is soft focus. "speak too fast" → the speed rolls to 1.6× and gets pinned; "don't give enough spaces"
+             → the gaps in your waveform close up and get pinned. */
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const W = document.getElementById("sw-wrap");
+          const O = 32.2;
+          const T = (g) => +(g - O).toFixed(2);
+
+          const veil = el("div", "sw-veil", W);
+          tl.fromTo(veil, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, T(32.3));
+
+          K.text(tl, W, { x: 100, y: 64, a: "tl", lines: [{ s: 66, w: [["some of", T(32.3)], ["those", T(32.86)]] }, { s: 140, w: [["problems", T(33.14), "s", "m"]] }], out: T(34.42), outMode: "fade" });
+          K.text(tl, W, { x: 100, y: 64, a: "tl", lines: [{ s: 66, w: [["might be", T(34.44)], ["you speak too", T(34.98)]] }, { s: 140, w: [["fast", T(35.68), "s", "m"]] }], out: T(36.34), outMode: "fade" });
+          K.text(tl, W, { x: 100, y: 64, a: "tl", lines: [{ s: 66, w: [["you don't give", T(36.38)]] }, { s: 140, w: [["enough", T(37.54)], ["spaces", T(37.86), "s", "m"]] }], out: T(38.28), outMode: "fade" });
+
+          // the player: frosted card around the live window (index.html #pv-watch: 426,318 · 588×338)
+          const card = K.fcard(W, { x: 396, y: 288, w: 648, h: 556 });
+          tl.fromTo(card.box, { opacity: 0, scale: 0.86, y: 40, filter: "blur(14px)" }, { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, T(32.32));
+          tl.set(card.box, { filter: "none" }, T(33.05));
+
+          const play = el("div", "sw-play", W);
+          play.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 3.5v17l14-8.5z"/></svg>';
+          const track = el("div", "sw-track", W);
+          const fill = el("div", "sw-fill", track);
+          const head = el("div", "sw-head", track);
+          const spd = el("div", "sw-spd", W);
+          spd.innerHTML = '<span class="n"></span>×';
+          K.roller(tl, spd.querySelector(".n"), { x: 0, y: 0, size: 28, values: ["1.0", "1.6"], times: [0, T(35.2)] });
+
+          // playback: normal speed until "speak", then 1.6× to the end
+          const t0 = T(32.6),
+            tA = T(35.2),
+            tB = T(37.75),
+            uA = 0.32;
+          tl.set(fill, { scaleX: 0 }, 0);
+          tl.set(head, { x: 0 }, 0);
+          tl.to(fill, { scaleX: uA, duration: tA - t0, ease: "none" }, t0);
+          tl.to(head, { x: 360 * uA, duration: tA - t0, ease: "none" }, t0);
+          tl.to(fill, { scaleX: 1, duration: tB - tA, ease: "none" }, tA);
+          tl.to(head, { x: 360, duration: tB - tA, ease: "none" }, tA);
+          const timeAt = (u) => (u <= uA ? t0 + (u / uA) * (tA - t0) : tA + ((u - uA) / (1 - uA)) * (tB - tA));
+
+          // your waveform: words with breathing gaps between them; played bars turn blue
+          const R = K.rng(23);
+          const WORDS = [5, 7, 4, 6, 5, 7, 4, 6, 5];
+          const GAP = 22,
+            STEP = 10,
+            X0 = 452,
+            YC = 792;
+          const bars = [];
+          let x = X0;
+          WORDS.forEach((n, wi) => {
+            for (let i = 0; i < n; i++) {
+              const h = 14 + Math.round(R() * 44);
+              const b = el("div", "sw-bar", W);
+              b.style.left = x + "px";
+              b.style.top = YC - h / 2 + "px";
+              b.style.height = h + "px";
+              bars.push({ b, wi, x });
+              x += STEP;
+            }
+            x += GAP;
+          });
+          const span = x - GAP - STEP - X0;
+          bars.forEach((o) => tl.to(o.b, { backgroundColor: "#3170e4", duration: 0.12, ease: "none" }, timeAt((o.x - X0) / span)));
+          tl.set([play, track, spd, ...bars.map((o) => o.b)], { opacity: 0 }, 0);
+          tl.to([play, track, spd], { opacity: 1, duration: 0.4, ease: "power2.out", stagger: 0.05 }, T(32.6));
+          tl.to(bars.map((o) => o.b), { opacity: 1, duration: 0.3, ease: "power2.out", stagger: 0.008 }, T(32.7));
+
+          const svg = K.fsvg(W, 1440, 1080);
+          // "you speak too fast": the speed gets pinned
+          K.flink(tl, svg, { pts: [[1030, 707], [1092, 707]], dash: true, dot0: true, t: T(35.6), d: 0.25 });
+          K.fchip(tl, W, { x: 1096, y: 707, text: "too fast", dot: true, t: T(35.68) });
+          // "you don't give enough spaces": the gaps close up, then get pinned
+          bars.forEach((o) => tl.to(o.b, { x: -(GAP - 4) * o.wi, duration: 0.7, ease: "power3.inOut" }, T(36.9)));
+          K.flink(tl, svg, { pts: [[446, YC], [376, YC]], dash: true, dot0: true, t: T(37.78), d: 0.25 });
+          K.fchip(tl, W, { x: 372, y: YC, a: "r", text: "no spaces", dot: true, t: T(37.86) });
+
+          // out with the rack back to you
+          tl.to(W, { opacity: 0, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, T(38.05));
+
+          window.__timelines["sc-watch"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

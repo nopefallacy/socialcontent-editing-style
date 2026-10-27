@@ -1,0 +1,1599 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=960, height=720" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "SerifK";
+        src: url("assets/fonts/instrument-serif.woff2") format("woff2");
+        font-weight: 400;
+      }
+      @font-face {
+        font-family: "InterK";
+        src: url("assets/fonts/inter-800.woff2") format("woff2");
+        font-weight: 800;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 960px;
+        height: 720px;
+        overflow: hidden;
+        background: #0b0b0b;
+      }
+      #stage {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        background: #0b0b0b;
+        font-family: "Inter", sans-serif;
+      }
+      /* everything is authored in a 1440x1080 world; OUTPUT_SCALE maps it to the render size
+         (0.6667 → 960x720 draft · 1 → 1440x1080 · 2 → 2880x2160 4K). Set by tools/set_output.py */
+      #world {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1440px;
+        height: 1080px;
+        transform-origin: 0 0;
+        transform: scale(0.6666667);
+        perspective: 2400px;
+      }
+
+      /* ---------- camera: footage + world-locked text/overlays ---------- */
+      #cam {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1440px;
+        height: 1080px;
+      }
+      #punch {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1440px;
+        height: 1080px;
+      }
+      /* face tracking: the footage and your cut-outs follow your face (captions and cards stay put in the frame) */
+      .trk {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1440px;
+        height: 1080px;
+      }
+      /* every A-roll segment shares the same 4:3 crop as its matte clip */
+      video[id^="aroll-"] {
+        position: absolute;
+        left: -240px;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+      }
+      .ovhost,
+      .schost {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1440px;
+        height: 1080px;
+      }
+      .matte {
+        position: absolute;
+        left: -240px;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+      }
+      #vignette {
+        position: absolute;
+        left: -240px;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        pointer-events: none;
+        background: none; /* the footage grade carries its own vignette */
+      }
+
+      /* ---------- kinetic type (matched to the inspo) ----------
+         Inter Bold, very tight tracking, overlapping lines.
+         White: flat warm white + soft drop shadow. Blue: soft sky blue, slightly lighter at the top. */
+      .stage3d {
+        position: absolute;
+        inset: 0;
+        perspective: 1250px;
+      }
+      .kg {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        font-family: "InterK", "Inter", sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.05em;
+        line-height: 0.84;
+        white-space: nowrap;
+      }
+      .kg.al-l {
+        align-items: flex-start;
+      }
+      .kg.al-c {
+        align-items: center;
+      }
+      .kg.al-r {
+        align-items: flex-end;
+      }
+      .kl {
+        display: block;
+        position: relative;
+      }
+      .kw {
+        display: inline-block;
+        margin-right: 0.16em;
+      }
+      .kw:last-child {
+        margin-right: 0;
+      }
+      .kt {
+        display: inline-block;
+        /* padding keeps the gradient clip from cropping glyphs; equal negative margin keeps lines tightly overlapped */
+        padding: 0.08em 0.02em 0.14em;
+        margin: -0.08em -0.02em -0.14em;
+      }
+      /* CAPTION COLOUR — decide per take on real frames (references/01 §4). Default here: bright/mid-blue sky → INK with a soft white halo;
+         accent words keep the user's blue, set on a WHITE highlighter swipe so they pop off a blue sky. */
+      .c-w .kt {
+        color: #111214;
+        text-shadow:
+          0 0 0.14em rgba(255, 255, 255, 0.6),
+          0 0.03em 0.06em rgba(255, 255, 255, 0.4);
+      }
+      /* DARK footage behind the text (trees, a dark shirt, indoor): swap to warm white —
+         .c-w .kt { color: #f6f3f2; text-shadow: 0 0.012em 0 rgba(176,178,188,.75), 0 0.045em 0.08em rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.3); }
+         and use the soft sky blue #7eb2ea for accents. Single words over trees in an ink video: `word^x` in captions.py. */
+      .c-i .kt {
+        color: #111214;
+      }
+      .c-b .kt,
+      .c-l .kt,
+      .c-y .kt,
+      .c-p .kt {
+        /* accent: the jersey's royal blue, a touch lighter than cobalt (the user found cobalt too deep) */
+        color: #3170e4;
+        background: linear-gradient(180deg, #3f7cee 0%, #3170e4 60%, #2a66da 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: none;
+      }
+      /* white is kept for words that land on the trees or the shirt */
+      .c-x .kt {
+        color: #f6f3f2;
+        text-shadow:
+          0 0.012em 0 rgba(176, 178, 188, 0.75),
+          0 0.045em 0.08em rgba(0, 0, 0, 0.45),
+          0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+      /* B-roll type: one emotional word per headline in the serif italic, with a highlighter swipe behind it */
+      .c-s .kt {
+        font-family: "SerifK", Georgia, serif;
+        font-style: italic;
+        font-weight: 400;
+        letter-spacing: -0.01em;
+        color: #3170e4;
+        text-shadow: none;
+      }
+      .dark .c-s .kt {
+        color: #8fb4f6;
+      }
+      .kw.mk {
+        position: relative;
+        isolation: isolate;
+      }
+      .kw .mkb {
+        position: absolute;
+        left: -0.08em;
+        right: -0.08em;
+        bottom: 0.1em;
+        height: 0.4em;
+        border-radius: 0.1em;
+        background: rgba(49, 112, 228, 0.2);
+      }
+      /* on the footage the swipe is white: a blue word on a white bar reads on any sky */
+      #cam .kw .mkb {
+        bottom: 0.04em;
+        height: 0.62em;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 0.04em 0.12em rgba(20, 40, 80, 0.12);
+        transform-origin: 0% 50%;
+        z-index: -1;
+      }
+      .dark .kw .mkb {
+        background: rgba(143, 180, 246, 0.22);
+      }
+      /* odometer numbers: every digit is a strip that rolls to the next value */
+      .roll {
+        position: absolute;
+        display: flex;
+        font-family: "InterK", "Inter", sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .roll .col {
+        position: relative;
+        height: 1em;
+        overflow: hidden;
+      }
+      .roll .strip {
+        display: flex;
+        flex-direction: column;
+      }
+      .roll .strip span {
+        height: 1em;
+        text-align: center;
+      }
+      .cap {
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(236, 239, 245, 0.55);
+      }
+
+      /* ---------- flat panels: one surface, one hairline, no sheen or glow ---------- */
+      .glass {
+        position: absolute;
+        border-radius: 22px;
+        background: rgba(16, 16, 16, 0.86);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        color: #f3f4f7;
+        font-family: "Inter", sans-serif;
+      }
+      .glass.solid {
+        background: #141414;
+        border-color: rgba(255, 255, 255, 0.1);
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+      /* focus state: the thing being talked about gets the accent hairline */
+      .glass.on,
+      .on > .glass {
+        border-color: rgba(126, 178, 234, 0.9);
+      }
+      .ico {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 26%;
+      }
+      .ico svg {
+        width: 52%;
+        height: 52%;
+        overflow: visible;
+      }
+      .ico svg * {
+        fill: none;
+        stroke: #f4f6fa;
+        stroke-width: 1.9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .ico.blue {
+        background: rgba(126, 178, 234, 0.1);
+        border: 1px solid rgba(126, 178, 234, 0.6);
+      }
+      .ico.blue svg * {
+        stroke: #a9cdf3;
+      }
+      .ico.fill {
+        background: #7eb2ea;
+        border: none;
+      }
+      .ico.fill svg * {
+        stroke: #0b0b0b;
+        stroke-width: 2.4;
+      }
+
+      /* ---------- full-screen B-roll stage: flat black, film grain, hairline grid ---------- */
+      .gridbg {
+        position: absolute;
+        inset: 0;
+        background-color: #0b0b0b;
+        background-image:
+          radial-gradient(circle, rgba(255, 255, 255, 0.26) 1.2px, rgba(255, 255, 255, 0) 1.7px),
+          linear-gradient(rgba(255, 255, 255, 0.045) 1px, rgba(255, 255, 255, 0) 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, rgba(255, 255, 255, 0) 1px);
+        background-size: 120px 120px;
+        background-position:
+          -60px -60px,
+          0 0,
+          0 0;
+      }
+      .gridframe {
+        position: absolute;
+        left: 40px;
+        top: 40px;
+        right: 40px;
+        bottom: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+      }
+      .grain {
+        position: absolute;
+        inset: 0;
+        background-image: url("assets/textures/grain.png");
+        background-size: 256px 256px;
+        opacity: 0.075;
+        pointer-events: none;
+      }
+
+      /* ---------- paper stage (light scenes): warm off-white, hairline grid, ink type ---------- */
+      .paperbg {
+        position: absolute;
+        inset: 0;
+        background-color: #f2f0eb;
+        background-image:
+          linear-gradient(rgba(20, 20, 20, 0.05) 1px, rgba(20, 20, 20, 0) 1px),
+          linear-gradient(90deg, rgba(20, 20, 20, 0.05) 1px, rgba(20, 20, 20, 0) 1px);
+        background-size: 120px 120px;
+      }
+      .paper .grain {
+        opacity: 0.045;
+      }
+      /* ---------- dark stage (user references: near-black, fine grain, dot grid) ---------- */
+      .darkbg {
+        position: absolute;
+        inset: 0;
+        background-color: #111214;
+      }
+      .dots {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle, rgba(255, 255, 255, 0.16) 1.3px, rgba(255, 255, 255, 0) 1.8px);
+        background-size: 60px 60px;
+        background-position: 30px 30px;
+      }
+      .dark .c-w .kt {
+        color: #f4f4f2;
+        text-shadow: none;
+      }
+      .dark .c-b .kt {
+        color: #6ea2f7;
+        background: none;
+        -webkit-text-fill-color: #6ea2f7;
+        filter: none;
+      }
+      .dark .grain {
+        opacity: 0.06;
+      }
+      /* ---------- sky stage (video 4 B-roll): soft white-to-blue light, like the inspo, matched to the sky ---------- */
+      .skybg {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(60% 55% at 22% 18%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 70%),
+          radial-gradient(70% 60% at 85% 95%, rgba(96, 152, 236, 0.75) 0%, rgba(96, 152, 236, 0) 70%),
+          radial-gradient(55% 50% at 100% 0%, rgba(140, 186, 245, 0.7) 0%, rgba(140, 186, 245, 0) 70%),
+          linear-gradient(160deg, #f4f8fe 0%, #dce9fb 55%, #b9d3f6 100%);
+      }
+      .paper .gridframe {
+        border-color: rgba(20, 20, 20, 0.08);
+      }
+      .paper .c-w .kt,
+      .paper .c-i .kt {
+        color: #151515;
+        text-shadow: none;
+      }
+      .paper .c-b .kt {
+        color: #3a78ec;
+        background: linear-gradient(180deg, #4a86f2 0%, #3170e4 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: none;
+      }
+      .paper .cap {
+        color: rgba(20, 20, 20, 0.5);
+      }
+
+      /* ---------- frosted liquid glass: only for panels that sit on the footage ---------- */
+      .frost {
+        position: absolute;
+        border-radius: 30px;
+        background: linear-gradient(150deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.09) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.26);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.42),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+          0 30px 70px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(26px) saturate(150%) brightness(0.86);
+        -webkit-backdrop-filter: blur(26px) saturate(150%) brightness(0.86);
+        color: #f3f4f7;
+        font-family: "Inter", sans-serif;
+      }
+
+      /* ---------- light liquid glass: panels that float over the bright outdoor footage ---------- */
+      .frostl {
+        position: absolute;
+        border-radius: 30px;
+        background: linear-gradient(150deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.78) 55%, rgba(255, 255, 255, 0.86) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.85);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.95),
+          0 26px 60px rgba(20, 30, 40, 0.28);
+        backdrop-filter: blur(24px) saturate(160%);
+        -webkit-backdrop-filter: blur(24px) saturate(160%);
+        color: #111214;
+        font-family: "Inter", sans-serif;
+      }
+      .frostl .cap,
+      .paper .cap {
+        color: rgba(17, 18, 20, 0.5);
+      }
+      .frostl .ico svg *,
+      .paper .ico svg * {
+        stroke: #111214;
+      }
+      .frostl .ico.blue,
+      .paper .ico.blue {
+        background: rgba(29, 95, 214, 0.1);
+        border: 1px solid rgba(29, 95, 214, 0.45);
+      }
+      .frostl .ico.blue svg *,
+      .paper .ico.blue svg * {
+        stroke: #1d5fd6;
+      }
+      .ico.fill {
+        background: #1d5fd6;
+      }
+      .ico.fill svg *,
+      .frostl .ico.fill svg *,
+      .paper .ico.fill svg * {
+        stroke: #ffffff;
+      }
+      /* paper cards: white, one hairline, a soft drop */
+      .card {
+        position: absolute;
+        border-radius: 26px;
+        background: #ffffff;
+        border: 1px solid rgba(20, 20, 20, 0.08);
+        box-shadow: 0 24px 60px rgba(30, 30, 30, 0.09);
+        color: #111214;
+        font-family: "Inter", sans-serif;
+      }
+      @font-face {
+        font-family: "FigK";
+        src: url("assets/fonts/figtree-500.woff2") format("woff2");
+        font-weight: 500;
+      }
+      @font-face {
+        font-family: "FigK";
+        src: url("assets/fonts/figtree-700.woff2") format("woff2");
+        font-weight: 700;
+      }
+      @font-face {
+        font-family: "FigK";
+        src: url("assets/fonts/figtree-800.woff2") format("woff2");
+        font-weight: 800;
+      }
+
+      /* ---------- frosted flow: ONE interface system per video, drawn from the user's reference set ----------
+         a translucent card (frosted rim + see-through panel), step pills that go todo → running → done,
+         dark state labels on dashed connectors, toggles, a named cursor, a selection box, photo nodes.
+         Everything is see-through glass: the sky and the trees blur through it. */
+      .fz {
+        position: absolute;
+        border-radius: 40px;
+        background: linear-gradient(160deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.12) 100%);
+        border: 1.5px solid rgba(255, 255, 255, 0.6);
+        box-shadow:
+          inset 0 1.5px 0 rgba(255, 255, 255, 0.8),
+          0 30px 70px rgba(20, 40, 80, 0.18);
+        backdrop-filter: blur(22px) saturate(1.45);
+        -webkit-backdrop-filter: blur(22px) saturate(1.45);
+      }
+      .fz-in {
+        position: absolute;
+        inset: 14px;
+        border-radius: 28px;
+        background: linear-gradient(170deg, rgba(252, 252, 250, 0.62) 0%, rgba(246, 248, 250, 0.46) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.75);
+      }
+      .fz-hd {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font: 700 25px FigK, sans-serif;
+        letter-spacing: -0.01em;
+        color: rgba(28, 32, 40, 0.55);
+        white-space: nowrap;
+      }
+      .fz-hd em {
+        font: italic 400 33px SerifK, Georgia, serif;
+        color: #2c5fc4;
+      }
+      .fk-svg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        overflow: visible;
+        pointer-events: none;
+      }
+      /* a step: centred on the flow's spine; layers cross-fade between states */
+      .fp {
+        position: absolute;
+        height: 84px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 32px 0 24px;
+        border-radius: 26px;
+        font: 700 35px FigK, sans-serif;
+        letter-spacing: -0.012em;
+        color: #4d5562;
+        white-space: nowrap;
+      }
+      .fp > .bg {
+        position: absolute;
+        inset: 0;
+        border-radius: 26px;
+      }
+      .fp .b-todo {
+        border: 2px solid rgba(40, 48, 60, 0.3);
+        background: rgba(255, 255, 255, 0.24);
+      }
+      .fp .b-run {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1.5px solid rgba(40, 48, 60, 0.12);
+        box-shadow: 0 12px 26px rgba(20, 40, 80, 0.12);
+      }
+      .fp .b-ok {
+        background: linear-gradient(180deg, #f3f7ff 0%, #cfe0fe 100%);
+        border: 1.5px solid #a9c3f2;
+        box-shadow:
+          inset 0 1.5px 0 #ffffff,
+          0 12px 28px rgba(49, 112, 228, 0.22);
+      }
+      .fp .b-err {
+        background: #17181c;
+        box-shadow: 0 14px 30px rgba(10, 12, 20, 0.3);
+      }
+      .fp .ic {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 auto;
+      }
+      .fp .ic > * {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 40px;
+        height: 40px;
+      }
+      .fp .ic img,
+      .fp .ic .av {
+        border-radius: 50%;
+      }
+      .fp .lb {
+        position: relative;
+        display: grid;
+      }
+      .fp .lb > span {
+        grid-area: 1 / 1;
+      }
+      .fp .strike {
+        position: absolute;
+        left: 76px;
+        right: 28px;
+        top: 41px;
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(40, 48, 60, 0.6);
+        transform-origin: 0% 50%;
+      }
+      .fp .fill {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 6px;
+        border-radius: 0 0 26px 26px;
+        background: #3170e4;
+        transform-origin: 0% 50%;
+      }
+      /* dark state label (the reference's Enabled / Hover / Disabled tags) */
+      .fs {
+        position: absolute;
+        height: 66px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 26px;
+        border-radius: 20px;
+        background: #16171b;
+        color: #ffffff;
+        font: 700 31px FigK, sans-serif;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        box-shadow: 0 14px 30px rgba(10, 12, 20, 0.26);
+      }
+      .fs.lite {
+        background: rgba(255, 255, 255, 0.86);
+        color: #16171b;
+        border: 1.5px solid rgba(255, 255, 255, 0.95);
+        box-shadow: 0 12px 26px rgba(20, 40, 80, 0.14);
+      }
+      .fs.blue {
+        background: #3170e4;
+        color: #ffffff;
+        box-shadow: 0 14px 30px rgba(49, 112, 228, 0.32);
+      }
+      .fs .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #ff5a5f;
+        flex: 0 0 auto;
+      }
+      /* a photo node (real frames of you), white ring like the reference's avatars */
+      .fa {
+        position: absolute;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 6px solid rgba(255, 255, 255, 0.92);
+        box-shadow: 0 16px 36px rgba(20, 40, 80, 0.22);
+        background: rgba(255, 255, 255, 0.5);
+      }
+      .fa img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .fa.fi {
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.78);
+      }
+      .fa.fi svg {
+        width: 46%;
+        height: 46%;
+        fill: none;
+        stroke: #2b2f36;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      /* a named cursor and a selection box */
+      .fc {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .fc svg {
+        width: 50px;
+        height: 50px;
+        display: block;
+        filter: drop-shadow(0 4px 6px rgba(10, 20, 40, 0.25));
+      }
+      .fc .tag {
+        position: absolute;
+        left: 40px;
+        top: 44px;
+        padding: 7px 16px;
+        border-radius: 12px;
+        font: 700 27px FigK, sans-serif;
+        color: #ffffff;
+        white-space: nowrap;
+      }
+      .fsel {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border: 2.5px solid #3170e4;
+        border-radius: 4px;
+      }
+      .fsel i {
+        position: absolute;
+        width: 15px;
+        height: 15px;
+        background: #ffffff;
+        border: 2.5px solid #3170e4;
+        border-radius: 3px;
+      }
+      .fsel i:nth-child(1) {
+        left: -9px;
+        top: -9px;
+      }
+      .fsel i:nth-child(2) {
+        right: -9px;
+        top: -9px;
+      }
+      .fsel i:nth-child(3) {
+        left: -9px;
+        bottom: -9px;
+      }
+      .fsel i:nth-child(4) {
+        right: -9px;
+        bottom: -9px;
+      }
+      /* toggle (the reference's Bookings / Orders / Leads switches) */
+      .ft {
+        position: absolute;
+        width: 76px;
+        height: 44px;
+        border-radius: 22px;
+        background: rgba(40, 48, 60, 0.2);
+      }
+      .ft .on {
+        position: absolute;
+        inset: 0;
+        border-radius: 22px;
+        background: #1c3a8f;
+      }
+      .ft .kn {
+        position: absolute;
+        left: 5px;
+        top: 5px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 3px 8px rgba(10, 20, 40, 0.25);
+      }
+      /* live footage windows (index.html): the same take, sharp, inside a frosted frame */
+      .portal {
+        position: absolute;
+        overflow: hidden;
+        opacity: 0;
+        border: 6px solid rgba(255, 255, 255, 0.92);
+        box-shadow: 0 24px 60px rgba(20, 40, 80, 0.26);
+        background: #9fbde6;
+      }
+      .portal video {
+        position: absolute;
+      }
+    </style>
+    <script>
+      /* Shared kit used by every overlay / scene composition. Deterministic builders only. */
+      window.HFKit = (function () {
+        const SVGNS = "http://www.w3.org/2000/svg";
+        function el(tag, cls, parent) {
+          const e = document.createElement(tag);
+          if (cls) e.className = cls;
+          if (parent) parent.appendChild(e);
+          return e;
+        }
+
+        /* ---------- shots: one table drives the camera AND where text sits in the room ----------
+           frame(s, sx, sy): scale s with the face placed at screen (sx, sy), clamped so the footage always covers the frame.
+           Each shot starts tight with the face pushed away from the text side, then dollies out to `b`. */
+        const FACE = [700, 560]; // MEASURE on a snapshot of THIS take: where the face sits in the raw 4:3 world (x, y)
+        function frame(s, sx, sy) {
+          let X = sx - 720 - (FACE[0] - 720) * s;
+          let Y = sy - 540 - (FACE[1] - 540) * s;
+          // keep a safety margin so 3D swings / tilts never reveal the edge of the footage
+          const mx = Math.max(0, 960 * s - 720 - 34),
+            my = Math.max(0, 540 * (s - 1) - 26);
+          X = Math.max(-mx, Math.min(mx, X));
+          Y = Math.max(-my, Math.min(my, Y));
+          return { s, X, Y, sx, sy };
+        }
+        /* One row per camera shot (edit seconds). frame(scale, faceX, faceY) puts your face at that screen
+           point (in the 1440x1080 world); text goes on the free side. in: whip | cut | move | rack.
+           Land every jump cut from cuts.json on a shot start (or under a B-roll scene). */
+        /* Visual flow: the frame centre is the focus. Text sits just left (x≈470) or just right (x≈970) of centre,
+           the camera frames you on the other side, and sides change only on a camera swing, a scene or a centred rest. */
+        /* text sits in the sky band ABOVE the trees: the face is framed low on the other side.
+           FR = face right, text just left of centre (x≈470) · FL = face left, text just right (x≈970) · C = centred rest */
+        const FR = (s, d = 0) => frame(s, 1030 - d, 740 - d / 2),
+          FL = (s, d = 0) => frame(s, 410 + d, 740 - d / 2),
+          C = (s, y = 700) => frame(s, 720, y);
+        const SHOTS = {
+          // EXAMPLE — replace with this take's shots (edit seconds, on word boundaries). See references/03.
+          s1: { t: 0.0, in: "whip", a: FR(1.32), b: FR(1.22, 18) }, // hook: face right, text left
+          s2: { t: 4.2, in: "cut", a: FR(1.26), b: FR(1.18, 18) }, // same side, punctuated
+          s3: { t: 9.0, in: "move", d: 0.9, a: C(1.06, 720), b: C(1.1, 728) }, // centred rest: a hero word behind you
+          s4: { t: 12.0, in: "move", d: 0.9, a: FL(1.3), b: FL(1.2, 20), end: 20.0 }, // swing: face left, text right; a scene covers 20–28
+          s5: { t: 28.0, in: "rack", a: FR(1.3), b: FR(1.2, 18) }, // first shot after the rack-focus scene
+        };
+        /* world coordinates of a screen point at the start of a shot */
+        function ws(shot, sx, sy) {
+          const f = SHOTS[shot].a;
+          return { x: 720 + (sx - 720 - f.X) / f.s, y: 540 + (sy - 540 - f.Y) / f.s, k: 1 / f.s };
+        }
+
+        function anchorPose(a) {
+          const v = a[0],
+            h = a[1];
+          return {
+            xPercent: h === "l" ? 0 : h === "c" ? -50 : -100,
+            yPercent: v === "t" ? 0 : v === "c" ? -50 : -100,
+            transformOrigin: (h === "l" ? "0%" : h === "c" ? "50%" : "100%") + " " + (v === "t" ? "0%" : v === "c" ? "50%" : "100%"),
+            align: h,
+          };
+        }
+
+        /* per-word directional motion blur (SVG gaussian on one axis) */
+        let mbN = 0;
+        function mbFilter(axis) {
+          let defs = document.getElementById("hfk-defs");
+          if (!defs) {
+            const svg = document.createElementNS(SVGNS, "svg");
+            svg.setAttribute("width", "0");
+            svg.setAttribute("height", "0");
+            svg.style.position = "absolute";
+            defs = document.createElementNS(SVGNS, "defs");
+            defs.id = "hfk-defs";
+            svg.appendChild(defs);
+            document.body.appendChild(svg);
+          }
+          const f = document.createElementNS(SVGNS, "filter");
+          f.id = "hfmb" + mbN++;
+          f.setAttribute("x", "-60%");
+          f.setAttribute("y", "-40%");
+          f.setAttribute("width", "220%");
+          f.setAttribute("height", "180%");
+          const g = document.createElementNS(SVGNS, "feGaussianBlur");
+          g.setAttribute("stdDeviation", "0 0");
+          f.appendChild(g);
+          defs.appendChild(f);
+          return { id: f.id, blur: g };
+        }
+
+        const TILT = 14; // degrees of lean for a stack that sits where the camera has pushed in (opt-in: tilt: true)
+        /* Kinetic text group.
+           spec = {x, y, a, shot?, lines:[{s, w:[[text, t, color, anim?]]}], out, outMode}
+           With `shot`, x/y/s are SCREEN values at the start of that shot and are converted into the room's plane,
+           so the stack rides the camera's dolly like the inspo. Times are composition-local seconds. */
+        function text(tl, parent, spec) {
+          const k = spec.shot ? ws(spec.shot, spec.x, spec.y) : { x: spec.x, y: spec.y, k: 1 };
+          const g = el("div", "kg", parent);
+          const p = anchorPose(spec.a || "tl");
+          g.classList.add("al-" + p.align);
+          g.style.left = k.x + "px";
+          g.style.top = k.y + "px";
+          if (spec.id) g.id = spec.id;
+          /* the inspo's depth: a stack beside you turns slightly toward you, its OUTER edge nearer the camera
+             (left stacks are taller on their left, right stacks taller on their right). Centred stacks stay flat. */
+          const side = p.align === "l" ? -1 : p.align === "r" ? 1 : k.x < 640 ? -1 : k.x > 800 ? 1 : 0;
+          // flat by default; lean only where the camera leans into a side (spec.tilt)
+          const ry = spec.ry != null ? spec.ry : spec.tilt ? -side * TILT : 0;
+          // perspective pushes the near (outer) edge outward: step tilted stacks in so they never touch the frame edge
+          if (ry && side) g.style.left = k.x - side * 46 + "px";
+          tl.set(g, { xPercent: p.xPercent, yPercent: p.yPercent, rotation: spec.rot || 0, rotationY: ry, transformOrigin: ry ? "50% 50%" : p.transformOrigin }, 0);
+          const dir = spec.dir != null ? spec.dir : p.align === "l" ? -1 : p.align === "r" ? 1 : 0;
+          (spec.lines || []).forEach((ln, li) => {
+            const size = ln.s * k.k;
+            const L = el("div", "kl", g);
+            L.style.fontSize = size + "px";
+            ln.w.forEach((w) => {
+              const sp = el("span", "kw c-" + (w[2] || "w"), L);
+              const tx = el("span", "kt", sp);
+              // stacked lines overlap by design (line-height 0.84), and gradient-clipped words only paint glyphs
+              sp.setAttribute("data-layout-allow-overlap", "");
+              sp.setAttribute("data-layout-allow-occlusion", "");
+              tx.setAttribute("data-layout-allow-overlap", "");
+              tx.setAttribute("data-layout-allow-occlusion", "");
+              tx.textContent = w[0];
+              const t = w[1];
+              if (w[3] === "m") {
+                sp.classList.add("mk");
+                const mb = el("span", "mkb", sp);
+                tl.fromTo(mb, { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "expo.out" }, t + 0.2);
+              }
+              /* entrance: the word glides in on a long deceleration while a soft blur clears.
+                 (A one-axis SVG smear banded into vertical stripes at 4K on flat sky — it read as a glitch.)
+                 First line glides in from the stack's side; lower lines rise from below. No overshoot. */
+              const horiz = dir !== 0 && li === 0;
+              const soft = Math.max(3, 0.07 * size);
+              tl.fromTo(sp, { opacity: 0, filter: "blur(" + soft + "px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.34, ease: "power2.out" }, t);
+              if (horiz) tl.fromTo(sp, { x: dir * 0.45 * size }, { x: 0, duration: 0.55, ease: "expo.out" }, t);
+              else tl.fromTo(sp, { y: 0.36 * size }, { y: 0, duration: 0.55, ease: "expo.out" }, t);
+              tl.set(sp, { filter: "none" }, t + 0.36);
+            });
+          });
+          if (spec.out != null) {
+            if ((spec.outMode || "cut") === "cut") tl.set(g, { opacity: 0 }, spec.out);
+            else tl.to(g, { opacity: 0, filter: "blur(6px)", duration: 0.16, ease: "power1.in" }, Math.max(0, spec.out - 0.16));
+          }
+          return g;
+        }
+
+        /* odometer: o = {x, y, size, values: ["0", "1,800", "8,000"], times: [t0, t1, …], cls, a: "tl"|"tc"|"tr"}
+           Each column is a strip of the characters it ever shows; at every time the strips roll (right to left) to the new value. */
+        function roller(tl, parent, o) {
+          const vals = o.values.map(String);
+          const L = Math.max(...vals.map((v) => v.length));
+          const pad = vals.map((v) => " ".repeat(L - v.length) + v);
+          const box = el("div", "roll " + (o.cls || ""), parent);
+          box.style.left = o.x + "px";
+          box.style.top = o.y + "px";
+          box.style.fontSize = o.size + "px";
+          if (o.color) box.style.color = o.color;
+          const a = o.a || "tl";
+          tl.set(box, { xPercent: a === "tc" ? -50 : a === "tr" ? -100 : 0 }, 0);
+          const cols = [];
+          for (let i = 0; i < L; i++) {
+            const chars = [];
+            pad.forEach((v) => chars.includes(v[i]) || chars.push(v[i]));
+            chars.sort((p, q) => (p === " " ? -1 : q === " " ? 1 : p < q ? -1 : p > q ? 1 : 0));
+            const col = el("div", "col", box);
+            // digits share one width; % is wide; separators (, . space) are narrow
+            col.style.width = chars.includes("%") ? "1.02em" : chars.some((c) => /[0-9]/.test(c)) ? "0.62em" : "0.3em";
+            const strip = el("div", "strip", col);
+            chars.forEach((c) => (el("span", "", strip).textContent = c === " " ? "\u00a0" : c));
+            cols.push({ strip, chars, col });
+          }
+          pad.forEach((v, k) => {
+            cols.forEach((c, i) => {
+              const idx = c.chars.indexOf(v[i]);
+              if (k === 0) tl.set(c.strip, { y: -idx + "em" }, 0);
+              else tl.to(c.strip, { y: -idx + "em", duration: 0.42, ease: "power3.out" }, o.times[k] + (L - 1 - i) * 0.035);
+            });
+          });
+          // a column that is blank now collapses, so the number stays centred on what it shows
+          return box;
+        }
+
+        /* place a screen-designed widget into the room at the start of a shot (base scale 1/s) and pop it in */
+        function widget(tl, node, o) {
+          const k = o.shot ? ws(o.shot, o.x, o.y) : { x: o.x, y: o.y, k: 1 };
+          if (o.zoom) k.k *= o.zoom;
+          node.style.left = k.x + "px";
+          node.style.top = k.y + "px";
+          tl.set(node, { transformOrigin: "0% 0%", scale: k.k }, 0);
+          // the entrance never outlives the exit: a late fromTo would undo the out-set and leave the widget on screen
+          const inDur = o.out != null && o.t != null ? Math.max(0.2, Math.min(0.7, o.out - o.t - 0.22)) : 0.7;
+          if (o.t != null) tl.fromTo(node, { opacity: 0, scale: 0.94 * k.k, y: 30 * k.k, filter: "blur(12px)" }, { opacity: 1, scale: k.k, y: 0, filter: "blur(0px)", duration: inDur, ease: "expo.out" }, o.t);
+          if (o.out != null) {
+            if (o.fade) tl.to(node, { opacity: 0, filter: "blur(6px)", duration: 0.2, ease: "power1.in" }, Math.max(0, o.out - 0.2));
+            else tl.set(node, { opacity: 0 }, o.out);
+          }
+          return k;
+        }
+
+        const ICONS = {
+          play: '<path d="M7 4.5v15l12-7.5z"/>',
+          search: '<circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.6-4.6"/>',
+          bulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+          users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+          user: '<circle cx="12" cy="8" r="4.2"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/>',
+          key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+          sliders: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
+          briefcase: '<rect width="20" height="14" x="2" y="7" rx="2.5"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+          repeat: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+          scissors: '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+          pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+          anchor: '<circle cx="12" cy="5" r="2.6"/><path d="M12 22V7.6"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/>',
+          megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+          doc: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8M16 17H8M10 9H8"/>',
+          film: '<rect width="18" height="18" x="3" y="3" rx="2.5"/><path d="M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18M17 7.5h4M17 16.5h4"/>',
+          check: '<path d="M20 6 9 17l-5-5"/>',
+          layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
+          arrowUp: '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
+          upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+          image: '<rect width="18" height="18" x="3" y="3" rx="2.5"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+          music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+          type: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+          battery: '<rect width="16" height="10" x="2" y="7" rx="2.5"/><path d="M22 11v2"/>',
+          zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+          send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+          heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+          palette: '<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C22 6.01 17.46 2 12 2z"/>',
+          flask: '<path d="M10 2v7.31"/><path d="M14 9.3V2"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/>',
+          flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+          trend: '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+          link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+          sparkles: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>',
+          message: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.2a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 8.5-8.5h.5a8.5 8.5 0 0 1 8 8z"/>',
+          unlock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+          megaphoneOff: '<path d="m3 11 18-5v12L3 14v-3z"/>',
+          clock: '<circle cx="12" cy="12" r="9.5"/><path d="M12 7v5l3 2"/>',
+          eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+          drop: '<path d="M12 2.7s6.5 7.1 6.5 11.6a6.5 6.5 0 0 1-13 0C5.5 9.8 12 2.7 12 2.7z"/>',
+          ticket: '<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M13 6v2M13 11v2M13 16v2"/>',
+          net: '<path d="M3 4h18M3 4l3 16M21 4l-3 16M6 20h12M8 4l1.5 16M16 4l-1.5 16M12 4v16M4 9h16M5 14.5h14"/>',
+          square: '<rect width="16" height="16" x="4" y="4" rx="1"/><path d="M4 9h16M4 14h16M9 4v16M14 4v16"/>',
+          quote: '<path d="M7 7h4v4c0 3-1.5 5-4 6M15 7h4v4c0 3-1.5 5-4 6"/>',
+        };
+        function iconSvg(name) {
+          return '<svg viewBox="0 0 24 24">' + (ICONS[name] || "") + "</svg>";
+        }
+        function icon(tl, parent, o) {
+          const d = el("div", "ico " + (o.blue ? "blue" : "glass"), parent);
+          d.style.width = o.size + "px";
+          d.style.height = o.size + "px";
+          d.style.left = o.x + "px";
+          d.style.top = o.y + "px";
+          d.innerHTML = iconSvg(o.i);
+          tl.set(d, { xPercent: -50, yPercent: -50 }, 0);
+          if (o.t != null) tl.fromTo(d, { opacity: 0, scale: 0.85, filter: "blur(8px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.6, ease: "expo.out" }, o.t);
+          if (o.out != null) tl.set(d, { opacity: 0 }, o.out);
+          return d;
+        }
+
+        /* curved text hugging the head; glyphs pop in one by one */
+        function arc(tl, parent, o) {
+          const wrap = el("div", "", parent);
+          wrap.style.position = "absolute";
+          wrap.style.left = "0px";
+          wrap.style.top = "0px";
+          const chars = o.text.split("");
+          const step = (o.s * (o.spacing || 0.56)) / o.r;
+          const widths = chars.map((c) => (c === " " ? 0.4 : "iljtfr.,'!|".includes(c) ? 0.55 : "mwMW".includes(c) ? 1.5 : 1));
+          const total = widths.reduce((a, b) => a + b, 0) * step;
+          let ang = ((o.a0 || 0) * Math.PI) / 180 - total / 2;
+          chars.forEach((c, i) => {
+            const half = (widths[i] * step) / 2;
+            ang += half;
+            const outer = el("div", "", wrap);
+            outer.style.position = "absolute";
+            outer.style.left = o.cx + "px";
+            outer.style.top = o.cy - o.r + "px";
+            outer.style.height = o.r + "px";
+            outer.style.width = "0px";
+            const inner = el("span", "kw c-" + (o.c || "b"), outer);
+            inner.setAttribute("data-layout-allow-overlap", ""); // arc glyph boxes rotate into each other by design
+            const tx = el("span", "kt", inner);
+            tx.setAttribute("data-layout-allow-overlap", "");
+            tx.textContent = c === " " ? " " : c;
+            inner.style.position = "absolute";
+            inner.style.left = "0px";
+            inner.style.bottom = o.r - o.s * 0.25 + "px";
+            inner.style.fontSize = o.s + "px";
+            inner.style.fontWeight = "800";
+            inner.style.letterSpacing = "0";
+            inner.style.fontFamily = "InterK, Inter, sans-serif";
+            inner.style.lineHeight = "1";
+            tl.set(outer, { rotation: (ang * 180) / Math.PI, transformOrigin: "0px " + o.r + "px" }, 0);
+            tl.set(inner, { xPercent: -50 }, 0);
+            const t = o.t + i * (o.stagger == null ? 0.035 : o.stagger);
+            tl.fromTo(inner, { opacity: 0, scale: 0.7, filter: "blur(8px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out" }, t);
+            ang += half;
+          });
+          if (o.out != null) tl.set(wrap, { opacity: 0 }, o.out);
+          return wrap;
+        }
+        function rng(seed) {
+          let s = seed >>> 0;
+          return function () {
+            s = (s + 0x6d2b79f5) >>> 0;
+            let t = s;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+        /* flat black stage: hairline grid + film grain (the old glow argument is ignored on purpose) */
+        function gridStage(parent) {
+          el("div", "gridbg", parent);
+          el("div", "gridframe", parent);
+          el("div", "grain", parent);
+        }
+        /* light paper stage for diagram scenes */
+        function darkStage(parent, dots) {
+          parent.classList.add("dark");
+          el("div", "darkbg", parent);
+          if (dots) el("div", "dots", parent);
+          el("div", "grain", parent);
+        }
+        function skyStage(parent) {
+          parent.classList.add("paper");
+          el("div", "skybg", parent);
+          el("div", "grain", parent);
+        }
+        function paperStage(parent) {
+          parent.classList.add("paper");
+          el("div", "paperbg", parent);
+          el("div", "gridframe", parent);
+          el("div", "grain", parent);
+        }
+        /* 24h ring: 5 task segments in one blue family, thin ticks */
+        const RING_TASKS = [
+          ["scissors", "#7eb2ea"],
+          ["pen", "#5c5c5c"],
+          ["search", "#4a4a4a"],
+          ["anchor", "#3c3c3c"],
+          ["megaphone", "#303030"],
+        ];
+        const RING_R = 250;
+        const RING_C = 2 * Math.PI * RING_R;
+        function ringClock(parent, size, full) {
+          const box = el("div", "", parent);
+          box.style.position = "absolute";
+          box.style.width = size + "px";
+          box.style.height = size + "px";
+          const seg = RING_C / 5;
+          const gap = 8;
+          let h = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 640 640" style="overflow:visible">';
+          h += '<circle cx="320" cy="320" r="' + RING_R + '" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="54"/>';
+          for (let i = 0; i < 48; i++) {
+            const a = (i * Math.PI) / 24;
+            const r1 = i % 2 ? 300 : 293;
+            h += '<line x1="' + (320 + r1 * Math.cos(a)).toFixed(1) + '" y1="' + (320 + r1 * Math.sin(a)).toFixed(1) + '" x2="' + (320 + 309 * Math.cos(a)).toFixed(1) + '" y2="' + (320 + 309 * Math.sin(a)).toFixed(1) + '" stroke="rgba(255,255,255,' + (i % 2 ? 0.14 : 0.32) + ')" stroke-width="3" stroke-linecap="round"/>';
+          }
+          RING_TASKS.forEach((c, i) => {
+            h += '<circle class="rc-seg" cx="320" cy="320" r="' + RING_R + '" fill="none" stroke="' + c[1] + '" stroke-width="54" stroke-linecap="butt" stroke-dasharray="' + (full ? seg - gap : 0) + " " + RING_C + '" transform="rotate(' + (-90 + i * 72 + 2) + ' 320 320)"' + (full ? "" : ' opacity="0"') + "/>";
+          });
+          h += "</svg>";
+          box.innerHTML = h;
+          const icons = RING_TASKS.map((c, i) => {
+            const a = ((-90 + i * 72 + 36) * Math.PI) / 180;
+            const s = size / 640;
+            const d = el("div", "ico", box);
+            const isz = 44 * s;
+            d.style.width = isz + "px";
+            d.style.height = isz + "px";
+            d.style.left = (320 + RING_R * Math.cos(a)) * s - isz / 2 + "px";
+            d.style.top = (320 + RING_R * Math.sin(a)) * s - isz / 2 + "px";
+            d.innerHTML = iconSvg(c[0]);
+            d.querySelector("svg").style.width = "70%";
+            d.querySelector("svg").style.height = "70%";
+            d.querySelectorAll("svg *").forEach((n) => n.setAttribute("style", "stroke:" + (i === 0 ? "#0b0b0b" : "#e9e9e9")));
+            if (!full) d.style.opacity = "0";
+            return d;
+          });
+          return { box, segs: Array.from(box.querySelectorAll(".rc-seg")), icons, segLen: seg - gap, C: RING_C };
+        }
+        ICONS.mic = '<rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5"/>';
+        ICONS.video = '<rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/>';
+        ICONS.pause = '<path d="M9 5v14M15 5v14"/>';
+        ICONS.smile = '<circle cx="12" cy="12" r="9.5"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>';
+
+        /* ---------- frosted flow kit: the interface pieces from the user's reference screenshots ----------
+           fcard: translucent card · fpill: a step that goes todo → run → ok / err / off · fchip: dark state label
+           flink: a connector that draws on (solid or dashed, dots at the ends) · fcursor: a named cursor
+           fsel: a selection box · ftoggle: a switch · fface: a photo node. Positions are in the parent's px. */
+        const FICON = {
+          todo: '<svg viewBox="0 0 34 34"><circle cx="17" cy="17" r="12.5" fill="none" stroke="rgba(40,48,60,0.42)" stroke-width="2.4"/></svg>',
+          ok: '<svg viewBox="0 0 34 34"><circle cx="17" cy="17" r="12.5" fill="none" stroke="#2c5fc4" stroke-width="2.4"/><path d="m11.6 17.3 3.8 3.8 7.2-7.4" fill="none" stroke="#2c5fc4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+          err: '<svg viewBox="0 0 34 34"><circle cx="17" cy="17" r="12.5" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2.4"/><circle cx="17" cy="17" r="6" fill="#ff5a5f"/></svg>',
+          off: '<svg viewBox="0 0 34 34"><circle cx="17" cy="17" r="12.5" fill="none" stroke="rgba(40,48,60,0.42)" stroke-width="2.4"/><path d="m12.6 12.6 8.8 8.8m0-8.8-8.8 8.8" stroke="rgba(40,48,60,0.6)" stroke-width="2.4" stroke-linecap="round"/></svg>',
+        };
+        // the reference's "Writing brief" spinner: eight ticks fading round the dial
+        let SPIN = '<svg viewBox="0 0 34 34">';
+        for (let i = 0; i < 8; i++) {
+          const a = (i * Math.PI) / 4;
+          SPIN += '<line x1="' + (17 + 6.5 * Math.cos(a)).toFixed(2) + '" y1="' + (17 + 6.5 * Math.sin(a)).toFixed(2) + '" x2="' + (17 + 12.5 * Math.cos(a)).toFixed(2) + '" y2="' + (17 + 12.5 * Math.sin(a)).toFixed(2) + '" stroke="#1d2026" stroke-opacity="' + (0.15 + (0.85 * i) / 7).toFixed(2) + '" stroke-width="2.6" stroke-linecap="round"/>';
+        }
+        SPIN += "</svg>";
+        const FCOL = { todo: "#4d5562", run: "#1d2026", ok: "#1f4ca8", err: "#ffffff", off: "#5b6270" };
+
+        function fcard(parent, o) {
+          const box = el("div", "fz", parent);
+          box.style.left = o.x + "px";
+          box.style.top = o.y + "px";
+          box.style.width = o.w + "px";
+          box.style.height = o.h + "px";
+          const inner = el("div", "fz-in", box);
+          return { box, inner };
+        }
+
+        /* o = {x, y, label, state, a: "c"|"l", w, img} — x is the spine (a: "c") or the left edge (a: "l") */
+        function fpill(tl, parent, o) {
+          const p = el("div", "fp", parent);
+          p.style.left = o.x + "px";
+          p.style.top = o.y + "px";
+          if (o.w) p.style.width = o.w + "px";
+          const bg = {};
+          ["todo", "run", "ok", "err"].forEach((s) => (bg[s] = el("div", "bg b-" + s, p)));
+          const ic = el("div", "ic", p);
+          const ico = {};
+          ["todo", "run", "ok", "err", "off"].forEach((s) => {
+            const d = el("div", "", ic);
+            d.innerHTML = s === "run" ? SPIN : FICON[s];
+            ico[s] = d;
+          });
+          if (o.img) {
+            const d = el("div", "", ic);
+            d.innerHTML = '<img src="' + o.img + '" style="width:40px;height:40px;object-fit:cover;border-radius:50%">';
+            ico.img = d;
+          }
+          const lb = el("div", "lb", p);
+          let cur = el("span", "", lb);
+          cur.textContent = o.label;
+          const strike = el("div", "strike", p);
+          const bgOf = (s) => (s === "off" ? "todo" : s);
+          let state = o.state || "todo";
+          tl.set(p, { xPercent: (o.a || "c") === "c" ? -50 : 0 }, 0);
+          Object.keys(bg).forEach((k) => tl.set(bg[k], { opacity: k === bgOf(state) ? 1 : 0 }, 0));
+          Object.keys(ico).forEach((k) => tl.set(ico[k], { opacity: k === (o.icon || state) ? 1 : 0 }, 0));
+          tl.set(lb, { color: FCOL[state] }, 0);
+          tl.set(strike, { scaleX: state === "off" ? 1 : 0 }, 0);
+          const api = {
+            el: p,
+            ico,
+            to(s, t, label, iconKey) {
+              const b = bgOf(s),
+                was = bgOf(state);
+              Object.keys(bg).forEach((k) => {
+                if (k === b && k !== was) tl.to(bg[k], { opacity: 1, duration: 0.35, ease: "power2.out" }, t);
+                if (k === was && k !== b) tl.to(bg[k], { opacity: 0, duration: 0.35, ease: "power2.out" }, t);
+              });
+              const ik = iconKey || s;
+              Object.keys(ico).forEach((k) => {
+                if (k === ik) tl.fromTo(ico[k], { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.45, ease: "expo.out", immediateRender: false }, t);
+                else tl.to(ico[k], { opacity: 0, duration: 0.18, ease: "power1.out" }, t);
+              });
+              tl.to(lb, { color: FCOL[s], duration: 0.35, ease: "power2.out" }, t);
+              if (s === "off") {
+                tl.to(strike, { scaleX: 1, duration: 0.42, ease: "power3.out" }, t + 0.05);
+                tl.to(p, { opacity: 0.5, filter: "blur(1.4px)", duration: 0.5, ease: "power2.out" }, t + 0.15);
+              } else if (state === "off") {
+                tl.to(strike, { scaleX: 0, duration: 0.3, ease: "power2.out" }, t);
+                tl.to(p, { opacity: 1, filter: "blur(0px)", duration: 0.3, ease: "power2.out" }, t);
+              }
+              if (s === "ok" || s === "err") tl.fromTo(p, { scale: 1.05 }, { scale: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, t);
+              if (label != null) api.label(label, t);
+              state = s;
+              return api;
+            },
+            label(text, t) {
+              const nx = el("span", "", lb);
+              nx.textContent = text;
+              tl.set(nx, { opacity: 0 }, 0);
+              const old = cur;
+              tl.to(old, { opacity: 0, y: -16, filter: "blur(4px)", duration: 0.24, ease: "power2.in" }, t);
+              tl.fromTo(nx, { opacity: 0, y: 16, filter: "blur(4px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.42, ease: "expo.out", immediateRender: false }, t + 0.16);
+              cur = nx;
+              return api;
+            },
+            spin(t0, t1) {
+              const turns = Math.max(1, Math.round((t1 - t0) * 1.1));
+              tl.fromTo(ico.run.firstChild, { rotation: 0 }, { rotation: 360 * turns, duration: t1 - t0, ease: "none", transformOrigin: "50% 50%", immediateRender: false }, t0);
+              return api;
+            },
+          };
+          return api;
+        }
+
+        /* dark state label: o = {x, y, text, cls, dot, a: "l"|"c"|"r", t, out} */
+        function fchip(tl, parent, o) {
+          const c = el("div", "fs " + (o.cls || ""), parent);
+          c.style.left = o.x + "px";
+          c.style.top = o.y + "px";
+          c.innerHTML = (o.dot ? '<span class="dot"></span>' : "") + "<span>" + o.text + "</span>";
+          const a = o.a || "l";
+          tl.set(c, { xPercent: a === "c" ? -50 : a === "r" ? -100 : 0, yPercent: -50, opacity: 0 }, 0);
+          if (o.t != null) tl.fromTo(c, { opacity: 0, scale: 0.86, filter: "blur(6px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.45, ease: "expo.out", immediateRender: false }, o.t);
+          if (o.out != null) tl.to(c, { opacity: 0, filter: "blur(5px)", duration: 0.25, ease: "power1.in" }, o.out);
+          return c;
+        }
+
+        /* connector: o = {pts: [[x, y], …], dash, r, color, w, dot0, dot1, t, d} — draws on from the first point */
+        let fkN = 0;
+        function flink(tl, svg, o) {
+          const pts = o.pts,
+            r = o.r == null ? 18 : o.r;
+          let d = "M" + pts[0][0] + " " + pts[0][1],
+            len = 0;
+          for (let i = 1; i < pts.length; i++) {
+            const [x0, y0] = pts[i - 1],
+              [x1, y1] = pts[i];
+            len += Math.hypot(x1 - x0, y1 - y0);
+            if (i < pts.length - 1 && r > 0) {
+              const [x2, y2] = pts[i + 1];
+              const l1 = Math.hypot(x1 - x0, y1 - y0),
+                l2 = Math.hypot(x2 - x1, y2 - y1);
+              const rr = Math.min(r, l1 / 2, l2 / 2);
+              const ax = x1 - ((x1 - x0) / l1) * rr,
+                ay = y1 - ((y1 - y0) / l1) * rr,
+                bx = x1 + ((x2 - x1) / l2) * rr,
+                by = y1 + ((y2 - y1) / l2) * rr;
+              d += " L" + ax.toFixed(1) + " " + ay.toFixed(1) + " Q" + x1 + " " + y1 + " " + bx.toFixed(1) + " " + by.toFixed(1);
+            } else d += " L" + x1 + " " + y1;
+          }
+          const id = "fkm" + fkN++;
+          const col = o.color || "rgba(30,36,46,0.42)",
+            w = o.w || 2.5;
+          let h = "";
+          if (o.dash) {
+            h += '<mask id="' + id + '" maskUnits="userSpaceOnUse" x="-3000" y="-3000" width="8000" height="8000"><path class="fk-m" d="' + d + '" fill="none" stroke="#fff" stroke-width="' + (w + 10) + '" stroke-linecap="round"/></mask>';
+            h += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + w + '" stroke-dasharray="' + (o.dash === true ? "7 9" : o.dash) + '" stroke-linecap="round" mask="url(#' + id + ')"/>';
+          } else h += '<path class="fk-m" d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + w + '" stroke-linecap="round"/>';
+          const dot = (p, k) => '<circle class="fk-d' + k + '" cx="' + p[0] + '" cy="' + p[1] + '" r="7" fill="#1d2026" stroke="#ffffff" stroke-width="3"/>';
+          if (o.dot0) h += dot(pts[0], 0);
+          if (o.dot1) h += dot(pts[pts.length - 1], 1);
+          const g = document.createElementNS(SVGNS, "g");
+          g.innerHTML = h;
+          svg.appendChild(g);
+          const m = g.querySelector(".fk-m");
+          const L = Math.ceil(len) + 2;
+          tl.set(m, { attr: { "stroke-dasharray": L + " " + L, "stroke-dashoffset": L } }, 0);
+          const t = o.t || 0,
+            dur = o.d || 0.6;
+          tl.to(m, { attr: { "stroke-dashoffset": 0 }, duration: dur, ease: "power2.inOut" }, t);
+          const d0 = g.querySelector(".fk-d0"),
+            d1 = g.querySelector(".fk-d1");
+          if (d0) tl.fromTo(d0, { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.3, ease: "expo.out" }, t);
+          if (d1) tl.fromTo(d1, { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.3, ease: "expo.out" }, t + dur * 0.85);
+          return { g, path: m, len: L };
+        }
+        function fsvg(parent, w, h) {
+          const s = document.createElementNS(SVGNS, "svg");
+          s.setAttribute("class", "fk-svg");
+          s.setAttribute("width", w);
+          s.setAttribute("height", h);
+          s.setAttribute("viewBox", "0 0 " + w + " " + h);
+          parent.appendChild(s);
+          return s;
+        }
+
+        /* a named cursor (the reference's multiplayer cursors): moveTo eases, click dips */
+        function fcursor(tl, parent, o) {
+          const c = el("div", "fc", parent);
+          c.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 2.6 20.4 10.2l-7 2.1-2.6 7.1z" fill="' + o.color + '" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg><div class="tag" style="background:' + o.color + '">' + o.name + "</div>";
+          tl.set(c, { x: o.x, y: o.y, opacity: 0 }, 0);
+          return {
+            el: c,
+            show(t) {
+              tl.fromTo(c, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.35, ease: "expo.out", immediateRender: false, transformOrigin: "4px 3px" }, t);
+            },
+            moveTo(x, y, t, d) {
+              tl.to(c, { x, y, duration: d || 0.7, ease: "power3.inOut" }, t);
+            },
+            click(t) {
+              tl.to(c.firstChild, { scale: 0.82, duration: 0.1, ease: "power2.in", transformOrigin: "20% 15%" }, t);
+              tl.to(c.firstChild, { scale: 1, duration: 0.22, ease: "power2.out" }, t + 0.1);
+            },
+            hide(t) {
+              tl.to(c, { opacity: 0, duration: 0.25, ease: "power1.in" }, t);
+            },
+          };
+        }
+        function fsel(tl, parent, o) {
+          const s = el("div", "fsel", parent);
+          s.innerHTML = "<i></i><i></i><i></i><i></i>";
+          tl.set(s, { left: o.x, top: o.y, width: o.w, height: o.h, opacity: 0 }, 0);
+          return {
+            el: s,
+            show(t) {
+              tl.fromTo(s, { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 0.4, ease: "expo.out", immediateRender: false }, t);
+            },
+            to(b, t, d) {
+              tl.to(s, { left: b.x, top: b.y, width: b.w, height: b.h, duration: d || 0.55, ease: "expo.inOut" }, t);
+            },
+            hide(t) {
+              tl.to(s, { opacity: 0, duration: 0.25, ease: "power1.in" }, t);
+            },
+          };
+        }
+        function ftoggle(tl, parent, o) {
+          const g = el("div", "ft", parent);
+          g.style.left = o.x + "px";
+          g.style.top = o.y + "px";
+          g.innerHTML = '<div class="on"></div><div class="kn"></div>';
+          const on = g.querySelector(".on"),
+            kn = g.querySelector(".kn");
+          tl.set(on, { opacity: o.on ? 1 : 0 }, 0);
+          tl.set(kn, { x: o.on ? 32 : 0 }, 0);
+          return {
+            el: g,
+            set(v, t) {
+              tl.to(on, { opacity: v ? 1 : 0, duration: 0.3, ease: "power2.out" }, t);
+              tl.to(kn, { x: v ? 32 : 0, duration: 0.42, ease: "power3.inOut" }, t);
+            },
+          };
+        }
+        function fface(parent, o) {
+          const f = el("div", "fa" + (o.icon ? " fi" : ""), parent);
+          f.style.left = o.x - o.d / 2 + "px";
+          f.style.top = o.y - o.d / 2 + "px";
+          f.style.width = o.d + "px";
+          f.style.height = o.d + "px";
+          f.innerHTML = o.icon ? iconSvg(o.icon) : '<img src="' + o.src + '">';
+          return f;
+        }
+        return { el, text, widget, roller, icon, iconSvg, arc, rng, gridStage, paperStage, skyStage, darkStage, ringClock, SHOTS, frame, ws, FACE, fcard, fpill, fchip, flink, fsvg, fcursor, fsel, ftoggle, fface };
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="stage" data-composition-id="main" data-start="0" data-duration="60" data-width="960" data-height="720" data-fx-chain="{&quot;version&quot;:1,&quot;nodes&quot;:[{&quot;type&quot;:&quot;gain&quot;,&quot;id&quot;:&quot;m1&quot;,&quot;label&quot;:&quot;Master level&quot;,&quot;params&quot;:{&quot;gain&quot;:2.0}},{&quot;type&quot;:&quot;truepeak&quot;,&quot;id&quot;:&quot;m2&quot;,&quot;label&quot;:&quot;Delivery ceiling&quot;,&quot;params&quot;:{&quot;ceiling&quot;:-2.0,&quot;lookahead&quot;:3,&quot;release&quot;:80}}]}">
+      <div id="world">
+        <!-- CAMERA: A-roll (the whole take), words BEHIND you, your matted silhouette, then words in FRONT — one plane -->
+        <!-- PUNCH: quick zooms centred on your face on the words that matter -->
+        <div id="punch">
+          <div id="cam">
+            <div id="trk-a" class="trk">
+              <video data-color-grading="{&quot;preset&quot;:&quot;skin-soft&quot;,&quot;intensity&quot;:0.62,&quot;adjust&quot;:{&quot;exposure&quot;:0.04,&quot;contrast&quot;:0.08,&quot;highlights&quot;:-0.18,&quot;shadows&quot;:0.05,&quot;whites&quot;:0,&quot;blacks&quot;:-0.05,&quot;temperature&quot;:0.06,&quot;tint&quot;:0.02,&quot;vibrance&quot;:0.03,&quot;saturation&quot;:-0.03},&quot;details&quot;:{&quot;vignette&quot;:0.05,&quot;vignetteMidpoint&quot;:0.5,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.65,&quot;grain&quot;:0,&quot;grainSize&quot;:0.25,&quot;grainRoughness&quot;:0.5},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" id="aroll-main" class="clip" src="assets/aroll-cut.mp4" data-start="0" data-duration="60" data-media-start="0" data-track-index="0" playsinline data-has-audio="true"></video>
+              <div id="vignette"></div>
+            </div>
+            <div id="ov-behind" class="ovhost clip" data-composition-id="ov-behind" data-composition-src="compositions/ov-behind.html" data-start="0" data-duration="60" data-track-index="2" data-width="1440" data-height="1080"></div>
+            <div id="trk-m" class="trk">
+              <!-- one matte clip per hero word (cut out of assets/aroll-cut.mp4 around the word; same grade as the A-roll), e.g.
+              <video data-color-grading="(copy from aroll-main)" id="matte-perfect" class="clip matte" src="assets/matte/perfect.webm" data-start="11.95" data-duration="1.25" data-media-start="0" data-track-index="1" playsinline muted></video> -->
+            </div>
+            <!-- captions ride the camera: one host per stretch of the video (scripts/captions.py fills them) -->
+            <div id="ov-a" class="ovhost clip" data-composition-id="ov-a" data-composition-src="compositions/ov-a.html" data-start="0" data-duration="20.1" data-track-index="4" data-width="1440" data-height="1080"></div>
+            <div id="ov-b" class="ovhost clip" data-composition-id="ov-b" data-composition-src="compositions/ov-b.html" data-start="27.9" data-duration="32.1" data-track-index="4" data-width="1440" data-height="1080"></div>
+          </div>
+        </div>
+        <!-- the frosted flow: screen-locked cards (fl-*) and rack-focus scenes (sc-*) — one system across the video -->
+        <div id="fl-example" class="ovhost clip" data-composition-id="fl-example" data-composition-src="compositions/fl-example.html" data-start="0" data-duration="20.1" data-track-index="5" data-width="1440" data-height="1080"></div>
+        <div id="sc-example" class="schost clip" data-composition-id="sc-example" data-composition-src="compositions/sc-example.html" data-start="19.9" data-duration="8.4" data-track-index="6" data-width="1440" data-height="1080"></div>
+        <!-- live window: the same take, sharp, inside sc-example's card (keep its rectangle in sync with the scene) -->
+        <div id="pv-example" class="portal" style="left: 426px; top: 318px; width: 588px; height: 338px; border-radius: 26px">
+          <video data-color-grading="{&quot;preset&quot;:&quot;skin-soft&quot;,&quot;intensity&quot;:0.62,&quot;adjust&quot;:{&quot;exposure&quot;:0.04,&quot;contrast&quot;:0.08,&quot;highlights&quot;:-0.18,&quot;shadows&quot;:0.05,&quot;whites&quot;:0,&quot;blacks&quot;:-0.05,&quot;temperature&quot;:0.06,&quot;tint&quot;:0.02,&quot;vibrance&quot;:0.03,&quot;saturation&quot;:-0.03},&quot;details&quot;:{&quot;vignette&quot;:0.05,&quot;vignetteMidpoint&quot;:0.5,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.65,&quot;grain&quot;:0,&quot;grainSize&quot;:0.25,&quot;grainRoughness&quot;:0.5},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" id="pvv-example" class="clip" src="assets/aroll-cut.mp4" data-start="20.0" data-duration="8.0" data-media-start="20.0" data-track-index="8" playsinline muted style="left: -349px; top: -205px; width: 1300px; height: 731px"></video>
+        </div>
+        <div id="endfade" style="position: absolute; inset: 0; background: #0b0b0b; opacity: 0; pointer-events: none"></div>
+      </div>
+      <!-- SFX: one soft sound per visible state change (references/05). Spread over tracks 10/11/13/14 (short) and 12/15 (long); never past the end. e.g.
+      <audio id="sfx-01" src="assets/sfx/whoosh-short.mp3" data-start="0.00" data-duration="0.57" data-track-index="10" data-volume="0.18"></audio>
+      <audio id="sfx-02" src="assets/sfx/click-soft.mp3" data-start="1.28" data-duration="0.37" data-track-index="11" data-volume="0.1"></audio>
+      The music bed (assets/music/score.wav) is added by the user's music pipeline. -->
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const SH = window.HFKit.SHOTS;
+      const pose = (f) => ({ scale: f.s, x: f.X, y: f.Y });
+      tl.set("#cam", { transformOrigin: "720px 540px" }, 0);
+
+      /* Every shot: arrive tight (cut / whip / rack-focus / animated reframe), then one continuous dolly-out. */
+      const keys = Object.keys(SH).sort((a, b) => SH[a].t - SH[b].t);
+      keys.forEach((key, i) => {
+        const sh = SH[key];
+        // the last shot runs to the end of the video unless it names its own `end`
+        const end = sh.end != null ? sh.end : i + 1 < keys.length ? SH[keys[i + 1]].t : parseFloat(document.getElementById("stage").dataset.duration);
+        let settle = 0.1;
+        if (sh.in === "move") {
+          const prev = SH[keys[i - 1]].b;
+          const nx = sh.a;
+          const midS = Math.max(1.17, Math.min(prev.s, nx.s) - 0.16); // keep enough overscan for the 3D swing
+          const dx = Math.sign(nx.sx - prev.sx);
+          const dy = Math.sign(nx.sy - prev.sy);
+          const d = sh.d || 1.2;
+          const rx = Math.abs(nx.sy - prev.sy) > 60 ? -dy * 2 : 0;
+          tl.to("#cam", { x: nx.X, y: nx.Y, duration: d, ease: "sine.inOut" }, sh.t);
+          tl.to("#cam", { keyframes: [{ scale: midS, duration: d * 0.5, ease: "sine.inOut" }, { scale: nx.s, duration: d * 0.5, ease: "sine.inOut" }] }, sh.t);
+          tl.to("#cam", { keyframes: [{ rotationY: dx * 2.5, rotationX: rx, duration: d * 0.5, ease: "sine.inOut" }, { rotationY: 0, rotationX: 0, duration: d * 0.5, ease: "sine.inOut" }] }, sh.t);
+          settle = d;
+        } else if (sh.in === "whip") {
+          tl.set("#cam", Object.assign(pose(sh.a), { scale: sh.a.s * 1.12, filter: "blur(14px)" }), sh.t);
+          tl.to("#cam", Object.assign(pose(sh.a), { filter: "blur(0px)", duration: 0.75, ease: "expo.out" }), sh.t);
+          settle = 0.75;
+        } else if (sh.in === "rack") {
+          tl.set("#cam", Object.assign(pose(sh.a), { rotationY: 0, rotationX: 0, filter: "blur(16px)" }), sh.t);
+          tl.to("#cam", { filter: "blur(0px)", duration: 0.45, ease: "power2.out" }, sh.t + 0.15);
+          settle = 0.6;
+        } else {
+          // hard cut with a two-frame shutter smear so the jump reads as an edit, not a glitch
+          tl.set("#cam", Object.assign(pose(sh.a), { rotationY: 0, rotationX: 0, filter: "blur(4px)" }), sh.t);
+          tl.to("#cam", { filter: "blur(0px)", duration: 0.08, ease: "none" }, sh.t);
+        }
+        tl.set("#cam", { filter: "none" }, sh.t + settle + 0.01);
+        tl.to("#cam", Object.assign(pose(sh.b), { duration: Math.max(0.2, end - sh.t - settle - 0.04), ease: "sine.inOut" }), sh.t + settle + 0.02);
+      });
+
+      /* ---------- face tracking: the camera follows your face ----------
+         TRACK = [[t, dx, dy], …] (world px, 10 per second): how far to move the footage so your face goes back
+         toward where each shot frames it (written by `modal run tools/hfcloud.py::track`). Every offset is clamped
+         to the overscan the camera has at that moment, so the edge of the footage never shows. */
+      /*TRACK:start*/ const TRACK = []; /*TRACK:end*/
+      (function () {
+        if (!TRACK.length) return;
+        const D = parseFloat(document.getElementById("stage").dataset.duration);
+        const sine = (u) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, u)));
+        const mix = (a, b, u) => ({ s: a.s + (b.s - a.s) * u, X: a.X + (b.X - a.X) * u, Y: a.Y + (b.Y - a.Y) * u });
+        const REST = { s: 1, X: 0, Y: 0 };
+        // the camera's pose at time t, mirroring the shot tweens above (cuts, racks, swings, dolly-outs, scene rests)
+        function poseAt(t) {
+          let i = keys.length - 1;
+          while (i > 0 && SH[keys[i]].t > t) i--;
+          const sh = SH[keys[i]];
+          const end = sh.end != null ? sh.end : i + 1 < keys.length ? SH[keys[i + 1]].t : D;
+          if (t > end) return REST; // a full-screen scene covers the frame; the camera rests at 1x
+          let settle = 0.1,
+            extra = 0;
+          if (sh.in === "move") {
+            const prev = SH[keys[i - 1]].b,
+              d = sh.d || 1.2;
+            settle = d;
+            if (t < sh.t + d) {
+              const u = (t - sh.t) / d;
+              const midS = Math.max(1.17, Math.min(prev.s, sh.a.s) - 0.16);
+              const p = mix(prev, sh.a, sine(u));
+              p.s = u < 0.5 ? prev.s + (midS - prev.s) * sine(u * 2) : midS + (sh.a.s - midS) * sine((u - 0.5) * 2);
+              p.extra = 22; // the 3D swing tilts the plane: keep extra room
+              return p;
+            }
+          } else if (sh.in === "whip") settle = 0.75;
+          else if (sh.in === "rack") settle = 0.6;
+          const u = (t - sh.t - settle) / Math.max(0.2, end - sh.t - settle);
+          return mix(sh.a, sh.b, sine(u));
+        }
+        // how far the footage may move before its edge shows (footage spans x −240…1680, y 0…1080 in the plane)
+        function room(p) {
+          const L = 720 + (-720 - p.X) / p.s,
+            R = 720 + (720 - p.X) / p.s,
+            T = 540 + (-540 - p.Y) / p.s,
+            B = 540 + (540 - p.Y) / p.s,
+            m = 6 + (p.extra || 0);
+          return { x0: R - 1680 + m, x1: L + 240 - m, y0: B - 1080 + m, y1: T - m };
+        }
+        const clamp = (v, a, b) => (a > b ? (a + b) / 2 : Math.max(a, Math.min(b, v)));
+        const pts = TRACK.filter((p, k) => k % 2 === 0); // 5 keyframes per second
+        let prev = null;
+        pts.forEach(([t, dx, dy]) => {
+          // the tightest room in a small window around t keeps the clamp from snapping at shot changes
+          const rs = [t - 0.2, t, t + 0.2].map((x) => room(poseAt(Math.max(0, x))));
+          const r = rs.reduce((a, b) => ({ x0: Math.max(a.x0, b.x0), x1: Math.min(a.x1, b.x1), y0: Math.max(a.y0, b.y0), y1: Math.min(a.y1, b.y1) }));
+          const v = { x: clamp(dx, r.x0, r.x1), y: clamp(dy, r.y0, r.y1) };
+          if (prev == null) tl.set(".trk", v, 0);
+          else tl.to(".trk", Object.assign({ duration: t - prev, ease: "none" }, v), prev);
+          prev = t;
+        });
+      })();
+
+      /* ---------- punch-ins: on the words that carry the point, the camera leans in ~8% around your face ----------
+         The face stays where the shot framed it (face tracking keeps it there), so the zoom never pushes it out of frame.
+         Each punch is released at the next shot: instantly on a cut/rack, smoothly across a swing. */
+      (function () {
+        const F = window.HFKit.FACE;
+        const PUNCH = [1.28, 8.78]; // EXAMPLE: the words that carry the point, ~one per 10–15 s
+        const faceAt = (t) => {
+          let i = keys.length - 1;
+          while (i > 0 && SH[keys[i]].t > t) i--;
+          const sh = SH[keys[i]];
+          const end = sh.end != null ? sh.end : i + 1 < keys.length ? SH[keys[i + 1]].t : 999;
+          const u = Math.min(1, Math.max(0, (t - sh.t) / Math.max(0.2, end - sh.t)));
+          const p = { s: sh.a.s + (sh.b.s - sh.a.s) * u, X: sh.a.X + (sh.b.X - sh.a.X) * u, Y: sh.a.Y + (sh.b.Y - sh.a.Y) * u };
+          return { x: (F[0] - 720) * p.s + 720 + p.X, y: (F[1] - 540) * p.s + 540 + p.Y, next: i + 1 < keys.length ? SH[keys[i + 1]] : null, end };
+        };
+        PUNCH.forEach((t) => {
+          const f = faceAt(t);
+          tl.set("#punch", { transformOrigin: f.x.toFixed(1) + "px " + (f.y - 60).toFixed(1) + "px" }, t - 0.01);
+          tl.to("#punch", { scale: 1.08, duration: 0.45, ease: "expo.out" }, t);
+          const rel = f.next && f.next.t <= f.end + 0.01 ? f.next : null;
+          if (rel && rel.in === "move") tl.to("#punch", { scale: 1, duration: rel.d || 1, ease: "sine.inOut" }, rel.t);
+          else tl.set("#punch", { scale: 1 }, Math.min(f.end, rel ? rel.t : f.end));
+        });
+      })();
+
+      /* rack focus into a frosted scene: the room (you, the sky, the trees) goes soft behind the glass, the camera
+         settles under the blur, and focus pulls back onto you when the scene leaves (the next shot is a "rack") */
+      function rack(t0, t1) {
+        tl.set("#punch", { transformOrigin: "720px 540px" }, t0 - 0.01);
+        tl.fromTo("#punch", { filter: "blur(0px) brightness(1) saturate(1)", scale: 1 }, { filter: "blur(30px) brightness(1.05) saturate(1.15)", scale: 1.12, duration: 0.6, ease: "power2.inOut", immediateRender: false }, t0);
+        tl.to("#cam", { scale: 1, x: 0, y: 0, rotationY: 0, rotationX: 0, duration: 0.6, ease: "power2.inOut" }, t0);
+        tl.to("#punch", { filter: "blur(0px) brightness(1) saturate(1)", scale: 1, duration: 0.55, ease: "power2.out" }, t1);
+        tl.set("#punch", { filter: "none" }, t1 + 0.56);
+      }
+      rack(20.0, 28.0); // EXAMPLE: t0 = the shot before's `end`, t1 = the next shot (in: "rack")
+
+      /* the live windows open with their scene's card and close with it */
+      function portal(id, t0, t1) {
+        tl.fromTo(id, { opacity: 0, scale: 0.9, y: 30, filter: "blur(12px)" }, { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", duration: 0.7, ease: "expo.out", immediateRender: false }, t0);
+        tl.set(id, { filter: "none" }, t0 + 0.72);
+        tl.to(id, { opacity: 0, scale: 0.96, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, t1 - 0.3);
+      }
+      portal("#pv-example", 20.2, 28.0);
+
+      // ending: ease to black after the last word
+      const D = parseFloat(document.getElementById("stage").dataset.duration);
+      tl.fromTo("#endfade", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power1.in" }, D - 0.45);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

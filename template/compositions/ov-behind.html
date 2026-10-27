@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+      </style>
+
+      <div id="root" data-composition-id="ov-behind" data-width="1440" data-height="1080">
+        <div class="stage3d" id="obh-stage"></div>
+      </div>
+
+      <script>
+        (function () {
+          const K = window.HFKit;
+          const tl = gsap.timeline({ paused: true });
+          const S = document.getElementById("obh-stage");
+          /* hero words in the sky BEHIND your head (your matte is layered on top of this comp); each leaves before its matte ends */
+          /* hero words BEHIND your head: one per ~30–40 s, the beat's emotional word. Pair each with a matte clip
+             in index.html (#trk-m) that starts ~0.25 s before the word and ends ~0.2 s after it fades. */
+          K.text(tl, S, { shot: "s3", x: 720, y: 150, a: "tc", lines: [{ s: 240, w: [["perfect", 9.6]] }], out: 10.5, outMode: "fade" });
+
+          window.__timelines["ov-behind"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+        .fe-lb {
+          position: absolute;
+          font: 700 26px FigK, sans-serif;
+          color: rgba(28, 32, 40, 0.55);
+          white-space: nowrap;
+        }
+        .fe-msg {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 54px;
+          height: 54px;
+          border-radius: 50%;
+          background: #3170e4;
+          display: grid;
+          place-items: center;
+          box-shadow: 0 8px 18px rgba(49, 112, 228, 0.35);
+        }
+        .fe-msg svg {
+          width: 28px;
+          height: 28px;
+          fill: none;
+          stroke: #ffffff;
+          stroke-width: 2.2;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+      </style>
+
+      <div id="root" data-composition-id="fl-e" data-width="1440" data-height="1080">
+        <div id="fe-wrap" style="position: absolute; inset: 0"></div>
+      </div>
+
+      <script>
+        (function () {
+          /* "the ultimate intention of the content is to make the viewer understand rather than just telling":
+             the end of the workflow — you → the viewer. Your idea travels down the line; the goal is
+             Understood ✓, not Just told. (Screen-locked, right of centre: you are framed left.) */
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const W = document.getElementById("fe-wrap");
+          const O = 38.3;
+          const T = (g) => +(g - O).toFixed(2);
+
+          const C = { x: 896, y: 392, w: 508, h: 520 };
+          const card = K.fcard(W, C);
+          tl.set(card.box, { height: 262 }, 0);
+          tl.to(card.box, { height: 404, duration: 0.55, ease: "expo.out" }, T(43.05));
+          tl.to(card.box, { height: C.h, duration: 0.55, ease: "expo.out" }, T(45.35));
+          const IN = card.inner;
+          tl.fromTo(card.box, { opacity: 0, y: 40, scale: 0.96, filter: "blur(14px)" }, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, T(38.6));
+
+          // you → viewer
+          const A = { x: 96, y: 112 },
+            B = { x: 384, y: 112 },
+            D = 132;
+          const svg = K.fsvg(IN, C.w - 28, C.h - 28);
+          const you = K.fface(IN, { x: A.x, y: A.y, d: D, src: "assets/frames/you.jpg" });
+          const viewer = K.fface(IN, { x: B.x, y: B.y, d: D, icon: "user" });
+          const l1 = el("div", "fe-lb", IN);
+          l1.textContent = "you";
+          l1.style.left = A.x + "px";
+          l1.style.top = A.y + 80 + "px";
+          const l2 = el("div", "fe-lb", IN);
+          l2.textContent = "viewer";
+          l2.style.left = B.x + "px";
+          l2.style.top = B.y + 80 + "px";
+          tl.set([l1, l2], { xPercent: -50 }, 0);
+          tl.fromTo([you, l1], { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.5, ease: "expo.out" }, T(38.8));
+          K.flink(tl, svg, { pts: [[A.x + D / 2 + 6, A.y], [B.x - D / 2 - 6, B.y]], dot0: true, dot1: true, t: T(39.1), d: 0.6 });
+          tl.fromTo([viewer, l2], { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.5, ease: "expo.out" }, T(39.55));
+          // "the ultimate intention": the viewer is the goal — a dashed target ring
+          const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          ring.setAttribute("cx", B.x);
+          ring.setAttribute("cy", B.y);
+          ring.setAttribute("r", D / 2 + 16);
+          ring.setAttribute("fill", "none");
+          ring.setAttribute("stroke", "#3170e4");
+          ring.setAttribute("stroke-width", "3");
+          ring.setAttribute("stroke-dasharray", "8 9");
+          svg.appendChild(ring);
+          tl.set(ring, { opacity: 0 }, 0);
+          tl.fromTo(ring, { opacity: 0, scale: 1.25, transformOrigin: "50% 50%" }, { opacity: 1, scale: 1, duration: 0.55, ease: "expo.out", immediateRender: false }, T(40.8));
+          tl.to(ring, { rotation: 60, duration: 6, ease: "none", transformOrigin: "50% 50%" }, T(40.8));
+
+          // "content": your idea travels to them
+          const msg = el("div", "fe-msg", IN);
+          msg.innerHTML = K.iconSvg("message");
+          tl.set(msg, { x: A.x - 27, y: A.y - 27, opacity: 0 }, 0);
+          tl.to(msg, { opacity: 1, duration: 0.2, ease: "power2.out" }, T(41.6));
+          tl.to(msg, { x: B.x - 27, duration: 1.0, ease: "power3.inOut" }, T(41.7));
+          tl.to(msg, { opacity: 0, scale: 0.6, duration: 0.25, ease: "power2.in" }, T(42.6));
+          tl.fromTo(viewer, { scale: 1 }, { keyframes: [{ scale: 1.08, duration: 0.18, ease: "power2.out" }, { scale: 1, duration: 0.45, ease: "power3.out" }], immediateRender: false }, T(42.7));
+
+          // what lands: understood ✓ — not just told
+          const U = K.fpill(tl, IN, { x: 26, y: 262, w: 428, a: "l", label: "Understood" });
+          const X = K.fpill(tl, IN, { x: 26, y: 378, w: 428, a: "l", label: "Just told" });
+          tl.set([U.el, X.el], { opacity: 0 }, 0);
+          tl.fromTo(U.el, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, T(43.2));
+          U.to("run", T(43.3)).spin(T(43.3), T(44.4));
+          U.to("ok", T(44.4));
+          tl.to(viewer, { borderColor: "#3170e4", duration: 0.35, ease: "power2.out" }, T(44.4));
+          tl.fromTo(X.el, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, T(45.5));
+          X.to("off", T(45.86));
+
+          // the camera dives into the viewer (sc-comm picks it up at 47.0)
+          tl.to(card.box, { scale: 1.3, x: -160, opacity: 0, filter: "blur(16px)", duration: 0.45, ease: "power3.in", transformOrigin: "75% 20%" }, T(46.7));
+
+          window.__timelines["fl-e"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

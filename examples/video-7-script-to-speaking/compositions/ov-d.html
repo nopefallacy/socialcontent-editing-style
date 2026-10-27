@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "SerifK";
+          src: url("assets/fonts/instrument-serif.woff2") format("woff2");
+          font-weight: 400;
+        }
+        @font-face {
+          font-family: "InterK";
+          src: url("assets/fonts/inter-800.woff2") format("woff2");
+          font-weight: 800;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+      </style>
+
+      <div id="root" data-composition-id="ov-d" data-width="1440" data-height="1080">
+        <div class="stage3d" id="od-stage"></div>
+      </div>
+
+      <script>
+        (function () {
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const S = document.getElementById("od-stage");
+          const O = 55.7;
+          const T = (g) => +(g - O).toFixed(2);
+
+          /*CAPTIONS:start*/
+          K.text(tl, S, { shot: "s8", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["these", 0.12], ["all", 1.22]] }, { s: 64, w: [["come", 1.48], ["under", 1.76]] }, { s: 128, w: [["expression", 2.04, "b", "m"]] }], out: 2.48, outMode: "fade" });
+          K.text(tl, S, { shot: "s8", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["and", 2.5], ["help", 2.78], ["the", 3.5], ["viewer", 3.56]] }, { s: 120, w: [["understand", 3.88, "b", "m"]] }, { s: 64, w: [["even", 4.7], ["more", 4.92]] }], out: 5.45, outMode: "fade" });
+          K.text(tl, S, { shot: "s9", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["the", 5.54], ["best", 5.66], ["way", 5.88]] }, { s: 64, w: [["to", 6.02], ["navigate", 6.16], ["it", 6.52]] }], out: 6.78, outMode: "fade" });
+          K.text(tl, S, { shot: "s9", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["just", 6.8]] }, { s: 120, w: [["write", 7.08, "b", "m"], ["it", 7.38]] }, { s: 64, w: [["down", 7.56]] }], out: 7.86, outMode: "fade" });
+          K.text(tl, S, { shot: "s9", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["try", 7.88], ["to", 8.48], ["speak", 8.64], ["in", 8.9], ["front", 9.08]] }, { s: 64, w: [["of", 9.22], ["the", 9.36], ["camera", 9.5]] }, { s: 130, w: [["slowly", 9.9, "b", "m"]] }], out: 12.5, outMode: "fade" });
+          K.text(tl, S, { shot: "s10", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["after", 12.58], ["that", 13.34]] }, { s: 120, w: [["first", 13.62, "b", "m"]] }, { s: 64, w: [["recording", 13.9]] }], out: 14.32, outMode: "fade" });
+          K.text(tl, S, { shot: "s10", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["try", 14.34], ["to", 14.64], ["understand", 14.76]] }, { s: 64, w: [["what", 15.1], ["are", 15.32], ["the", 15.44]] }, { s: 120, w: [["problems", 15.54, "b", "m"]] }, { s: 58, w: [["there", 15.98], ["were", 16.28]] }], out: 17.08, outMode: "fade" });
+          K.text(tl, S, { shot: "s10", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["and", 17.1], ["just", 17.22], ["try", 17.4], ["to", 17.54]] }, { s: 130, w: [["re-record", 17.7, "b", "m"]] }, { s: 58, w: [["it", 18.12]] }], out: 18.8, outMode: "fade" });
+          K.text(tl, S, { shot: "s11", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["once", 18.94], ["you", 19.2], ["do", 19.3], ["it", 19.46]] }, { s: 120, w: [["10", 19.88], ["15", 20.02], ["20", 20.34], ["30", 20.68, "b", "m"]] }, { s: 58, w: [["times", 20.94]] }], out: 21.26, outMode: "fade" });
+          K.text(tl, S, { shot: "s11", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["it's", 21.28], ["gonna", 22.12], ["be", 22.26], ["much", 22.4]] }], out: 22.62, outMode: "fade" });
+          K.text(tl, S, { shot: "s11", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["for", 23.06], ["you", 23.24]] }], out: 23.95, outMode: "fade" });
+          /*CAPTIONS:end*/
+
+          window.__timelines["ov-d"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

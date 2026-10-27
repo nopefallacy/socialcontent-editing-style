@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+      </style>
+
+      <div id="root" data-composition-id="fl-example" data-width="1440" data-height="1080">
+        <div id="fe-wrap" style="position: absolute; inset: 0"></div>
+      </div>
+
+      <script>
+        (function () {
+          /* STARTER — a frosted workflow card beside the face (screen-locked, left of centre: the face is framed
+             right in s1–s2). Replace labels and times with the spoken words of your take (edit seconds).
+             Shows every move the system needs: the plan appears pending, a step runs then ticks ✓ ON its word,
+             a dashed state label pins to it, a result lands as an error, the card grows, a named cursor
+             selects one thing while the rest dims, and the card leaves before the camera swings (s3 at 9.0). */
+          const K = window.HFKit;
+          const tl = gsap.timeline({ paused: true });
+          const W = document.getElementById("fe-wrap");
+
+          // the card: x 36 (left of centre), below the caption stack (top ≥ ~372). It grows with its steps.
+          const C = { x: 36, y: 380, w: 520, h: 568 };
+          const card = K.fcard(W, C);
+          const IN = card.inner; // the see-through panel (inset 14); steps live here
+          const PX = 26,
+            PW = 440,
+            ROW = [30, 158, 286, 414]; // step tops inside the panel (84 tall + 44 gap)
+          const svgIn = K.fsvg(IN, C.w - 28, C.h - 28); // connectors inside the card
+          const svgOut = K.fsvg(W, 1440, 1080); // connectors out to the state labels
+          const spine = PX + 44;
+          const midY = (i) => C.y + 14 + ROW[i] + 42; // a step's centre line on screen
+
+          const P = [
+            K.fpill(tl, IN, { x: PX, y: ROW[0], w: PW, a: "l", label: "Step one" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[1], w: PW, a: "l", label: "Step two" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[2], w: PW, a: "l", label: "Step three" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[3], w: PW, a: "l", label: "The result" }),
+          ];
+          tl.set(P.map((p) => p.el), { opacity: 0 }, 0);
+
+          // in: soft, after the opening whip has settled
+          tl.fromTo(card.box, { opacity: 0, y: 40, scale: 0.96, filter: "blur(14px)" }, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, 0.4);
+          tl.set(card.box, { filter: "none" }, 1.15); // glass blurs what's behind it only when no filter sits on it
+          tl.set(card.box, { height: 428 }, 0); // only as tall as the three planned steps…
+          // the plan, pending, one under another
+          [0, 1, 2].forEach((i) => tl.fromTo(P[i].el, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, 0.6 + i * 0.12));
+
+          // step one runs while it is described and ticks ✓ on its word; a label pins the detail that matters
+          P[0].to("run", 0.9).spin(0.9, 1.6);
+          P[0].to("ok", 1.6);
+          K.flink(tl, svgOut, { pts: [[C.x + 14 + PX + PW, midY(0)], [596, midY(0)]], dash: true, dot0: true, t: 1.65, d: 0.3 });
+          const lab = K.fchip(tl, W, { x: 600, y: midY(0), text: "the detail", cls: "lite", t: 1.8 });
+
+          // step two, step three: the spine draws as each starts
+          K.flink(tl, svgIn, { pts: [[spine, ROW[0] + 84], [spine, ROW[1]]], t: 3.9, d: 0.3 });
+          P[1].to("run", 4.0).spin(4.0, 4.8);
+          P[1].to("ok", 4.8);
+          K.flink(tl, svgIn, { pts: [[spine, ROW[1] + 84], [spine, ROW[2]]], t: 4.85, d: 0.3 });
+          P[2].to("run", 5.0).spin(5.0, 6.6);
+          P[2].to("ok", 6.6);
+
+          // …and grows when the result lands (an error here: the usual way fails)
+          tl.to(card.box, { height: C.h, duration: 0.55, ease: "expo.out" }, 6.8);
+          K.flink(tl, svgIn, { pts: [[spine, ROW[2] + 84], [spine, ROW[3]]], t: 6.9, d: 0.3 });
+          tl.fromTo(P[3].el, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: "expo.out", immediateRender: false }, 7.0);
+          P[3].to("err", 7.2);
+
+          // focus: "you" pick the label; everything else steps back
+          const you = K.fcursor(tl, W, { name: "you", color: "#3170e4", x: 780, y: 660 });
+          const sel = K.fsel(tl, W, { x: 588, y: midY(0) - 42, w: 200, h: 84 });
+          you.show(7.6);
+          you.moveTo(784, midY(0) + 26, 7.65, 0.55);
+          you.click(8.25);
+          sel.show(8.25);
+          tl.to([P[1].el, P[2].el, P[3].el], { opacity: 0.35, duration: 0.35, ease: "power2.out" }, 7.9);
+
+          // out before the swing (s3 at 9.0). To bring the card BACK later, set its parts visible again at the
+          // return time and fade the box in at the same place — it returns with the state it left in.
+          tl.to([card.box, svgOut, lab, you.el, sel.el], { opacity: 0, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, 8.7);
+
+          window.__timelines["fl-example"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

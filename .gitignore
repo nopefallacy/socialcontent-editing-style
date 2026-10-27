@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+.hyperframes/
+renders/
+*.mp4
+*.webm
+*.wav
+__pycache__/
+
+# third-party reference screenshots: kept locally, never published (descriptions are in references/refs/refs.md)
+references/refs/*.png
+references/refs/*.webp
+references/refs/*.jpg

@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+      </style>
+
+      <div id="root" data-composition-id="fl-a" data-width="1440" data-height="1080">
+        <div id="fa-wrap" style="position: absolute; inset: 0"></div>
+      </div>
+
+      <script>
+        (function () {
+          /* The workflow everybody starts with, as a frosted card beside you (screen-locked, left of centre):
+             Write a script ✓ → Record it ✓ → Hear it back ✓ → Sounds unnatural.
+             It comes back at "so when you script out a video": the voiceover step is switched off, "On camera"
+             takes its place, "Hear it back" becomes "Watch it back" and the camera dives into it (sc-watch). */
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const W = document.getElementById("fa-wrap");
+
+          const C = { x: 36, y: 380, w: 520, h: 568 };
+          const card = K.fcard(W, C);
+          // the card is only as tall as the steps it shows: it grows when the result lands
+          tl.set(card.box, { height: 428 }, 0);
+          tl.to(card.box, { height: C.h, duration: 0.55, ease: "expo.out" }, 8.3);
+          const IN = card.inner; // inner panel, inset 14
+          const PX = 26,
+            PW = 440,
+            ROW = [30, 158, 286, 414]; // pill tops inside the panel
+          const svgIn = K.fsvg(IN, C.w - 28, C.h - 28);
+          const spine = PX + 44; // the connector runs down past the status icons
+          // spine connectors between the steps (drawn on as each step starts)
+          const links = [0, 1, 2].map((i) => [
+            [spine, ROW[i] + 84],
+            [spine, ROW[i + 1]],
+          ]);
+
+          const P = [
+            K.fpill(tl, IN, { x: PX, y: ROW[0], w: PW, a: "l", label: "Write a script" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[1], w: PW, a: "l", label: "Record it" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[2], w: PW, a: "l", label: "Hear it back" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[3], w: PW, a: "l", label: "Sounds unnatural" }),
+          ];
+          // the replacement step: "On camera", with a real frame of you as its icon
+          const cam = K.fpill(tl, IN, { x: PX, y: ROW[1], w: PW, a: "l", label: "On camera", img: "assets/frames/you.jpg", icon: "img", state: "run" });
+          tl.set(cam.el, { opacity: 0 }, 0);
+          tl.set(P.map((p) => p.el), { opacity: 0 }, 0);
+
+          // screen-level svg for connectors that leave the card (to the state labels)
+          const svgOut = K.fsvg(W, 1440, 1080);
+          const ox = C.x + 14,
+            oy = C.y + 14; // panel origin on screen
+          const midY = (i) => oy + ROW[i] + 42;
+
+          /* ---------- part 1: the usual way (0.3 – 11.0) ---------- */
+          tl.fromTo(card.box, { opacity: 0, y: 40, scale: 0.96, filter: "blur(14px)" }, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, 0.3);
+          // steps arrive one under another as you say them
+          const stepIn = (p, t) => tl.fromTo(p.el, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, t);
+          stepIn(P[0], 0.62);
+          stepIn(P[1], 0.9);
+          stepIn(P[2], 1.05); // the result step only appears when it happens
+          // "written down a perfect script": step 1 runs while you say it, done on "perfect"
+          P[0].to("run", 0.62).spin(0.62, 1.28);
+          P[0].to("ok", 1.28);
+          // the label it earns: perfect ✓ (dashed, out to the side)
+          const perf = K.fchip(tl, W, { x: 600, y: midY(0), text: "perfect", cls: "lite", t: 1.5 });
+          const pl = K.flink(tl, svgOut, { pts: [[ox + PX + PW, midY(0)], [596, midY(0)]], dash: true, dot0: true, t: 1.32, d: 0.3 });
+          // "try to record it" → done; "and hear it for yourself" → the playback runs
+          K.flink(tl, svgIn, { pts: links[0], t: 4.9, d: 0.3 });
+          P[1].to("run", 5.0).spin(5.0, 5.7);
+          P[1].to("ok", 5.7);
+          K.flink(tl, svgIn, { pts: links[1], t: 5.75, d: 0.3 });
+          P[2].to("run", 5.84).spin(5.84, 8.0);
+          P[2].to("ok", 8.0);
+          // "it just feels so unnatural": the result lands as an error
+          K.flink(tl, svgIn, { pts: links[2], t: 8.3, d: 0.35 });
+          tl.fromTo(P[3].el, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: "expo.out", immediateRender: false }, 8.6);
+          P[3].to("err", 8.78);
+          // "even though the word choices you used are perfect in your opinion": your cursor picks the perfect label
+          const you = K.fcursor(tl, W, { name: "you", color: "#3170e4", x: 760, y: 640 });
+          const sel = K.fsel(tl, W, { x: 588, y: midY(0) - 42, w: 172, h: 84 });
+          you.show(10.1);
+          you.moveTo(744, midY(0) + 26, 10.15, 0.55);
+          you.click(10.82);
+          sel.show(10.82);
+          tl.to([P[1].el, P[2].el, P[3].el], { opacity: 0.35, duration: 0.35, ease: "power2.out" }, 10.42);
+          // out on the camera swing (11.0), well before PERFECT rises behind you
+          tl.to([card.box, perf, svgOut, you.el, sel.el], { opacity: 0, filter: "blur(10px)", duration: 0.32, ease: "power1.in" }, 11.0);
+
+          /* ---------- part 2: "so when you script out a video" (21.65 – 32.3) ---------- */
+          // the same card, the same steps, the same result: back exactly as it left
+          const back = 22.45; // after the camera has swung you to the right
+          tl.set([P[1].el, P[2].el, P[3].el], { opacity: 1 }, back);
+          tl.set(svgOut, { opacity: 1, filter: "none" }, back);
+          tl.set([perf, pl.g, you.el, sel.el], { opacity: 0 }, back);
+          tl.fromTo(card.box, { opacity: 0, y: 30, scale: 0.97, filter: "blur(12px)" }, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.65, ease: "expo.out", immediateRender: false }, back);
+          // "script out": the first step is the one that stays
+          tl.fromTo(P[0].el, { scale: 1 }, { keyframes: [{ scale: 1.05, duration: 0.2, ease: "power2.out" }, { scale: 1, duration: 0.45, ease: "power3.out" }], immediateRender: false }, 22.8);
+          // "rather than just doing a voiceover on it": the recording step shows what it was — and switches off
+          P[1].label("Voiceover", 24.2);
+          const off = K.fchip(tl, W, { x: 600, y: midY(1), text: "skip it", t: 25.0, dot: true });
+          const ol = K.flink(tl, svgOut, { pts: [[ox + PX + PW, midY(1)], [596, midY(1)]], dash: true, dot0: true, t: 24.85, d: 0.25 });
+          P[1].to("off", 24.96);
+          // "try to open the camera": the voiceover slides away, On camera (you) takes its place
+          tl.to(P[1].el, { x: 40, opacity: 0, filter: "blur(8px)", duration: 0.4, ease: "power2.in" }, 25.95);
+          tl.to([off, ol.g], { opacity: 0, filter: "blur(6px)", duration: 0.3, ease: "power1.in" }, 25.95);
+          tl.fromTo(cam.el, { opacity: 0, x: -40, filter: "blur(8px)" }, { opacity: 1, x: 0, filter: "blur(0px)", duration: 0.55, ease: "expo.out", immediateRender: false }, 26.24);
+          cam.to("ok", 28.08, null, "img");
+          // "and see for yourself": the playback step becomes watching it back, and starts
+          P[2].to("run", 29.12, "Watch it back").spin(29.12, 32.3);
+          // "what are the problems": the result is open again
+          P[3].to("todo", 30.7, "What's off?");
+          // the camera dives into the playback (sc-watch takes over at 32.3)
+          tl.to(card.box, { scale: 1.35, x: 300, y: -60, opacity: 0, filter: "blur(16px)", duration: 0.5, ease: "power3.in", transformOrigin: "50% 60%" }, 31.95);
+
+          window.__timelines["fl-a"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

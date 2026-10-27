@@ -1,0 +1,6 @@
+{
+ "bed": {"src": "assets/music/score.wav", "volume": 1, "gain_db": -2.5},
+ "hits": [],
+ "sfx": {"drop": [], "keep": [], "scale": {}},
+ "master": {"gain": 2.0, "ceiling": -2}
+}

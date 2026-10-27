@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "SerifK";
+          src: url("assets/fonts/instrument-serif.woff2") format("woff2");
+          font-weight: 400;
+        }
+        @font-face {
+          font-family: "InterK";
+          src: url("assets/fonts/inter-800.woff2") format("woff2");
+          font-weight: 800;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+      </style>
+
+      <div id="root" data-composition-id="ov-e" data-width="1440" data-height="1080">
+        <div class="stage3d" id="oe-stage"></div>
+      </div>
+
+      <script>
+        (function () {
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const S = document.getElementById("oe-stage");
+          const O = 90.9;
+          const T = (g) => +(g - O).toFixed(2);
+
+          /*CAPTIONS:start*/
+          K.text(tl, S, { shot: "s13", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["currently", 0.51], ["I", 0.78], ["don't", 1.06], ["do", 1.28]] }, { s: 64, w: [["any", 1.42]] }, { s: 124, w: [["scripting", 1.6, "b", "m"]] }], out: 2.18, outMode: "fade" });
+          K.text(tl, S, { shot: "s13", x: 470, y: 84, a: "tc", lines: [{ s: 58, w: [["for", 2.2], ["the", 2.62], ["videos", 2.74], ["I", 3.06], ["make", 3.24]] }, { s: 58, w: [["because", 3.89], ["I", 4.04], ["don't", 4.18]] }, { s: 120, w: [["need", 4.36, "b", "m"]] }, { s: 64, w: [["that", 4.56], ["anymore", 4.76]] }], out: 5.3, outMode: "fade" });
+          K.text(tl, S, { shot: "s14", x: 720, y: 40, a: "tc", lines: [{ s: 58, w: [["I'm", 5.32], ["so", 5.5]] }], out: 5.68, outMode: "fade" });
+          K.text(tl, S, { shot: "s14", x: 720, y: 40, a: "tc", lines: [{ s: 58, w: [["with", 5.94], ["that", 6.16]] }], out: 6.85, outMode: "fade" });
+          K.text(tl, S, { shot: "s15", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["but", 6.94], ["if", 7], ["you", 7.14], ["need", 7.24]] }, { s: 64, w: [["then", 7.46], ["it's", 7.66], ["gonna", 7.98], ["be", 8.1]] }, { s: 124, w: [["helpful", 8.24, "b", "m"]] }], out: 8.48, outMode: "fade" });
+          K.text(tl, S, { shot: "s15", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["and", 8.5], ["I'm", 8.76], ["also", 8.96], ["gonna", 9.2], ["be", 9.34]] }, { s: 64, w: [["talking", 9.46], ["about", 9.66], ["how", 9.92], ["you", 10.1], ["can", 10.24]] }, { s: 64, w: [["talk", 10.4], ["in", 10.66], ["front", 10.82], ["of", 10.98], ["the", 11.1], ["camera", 11.24]] }], out: 11.5, outMode: "fade" });
+          K.text(tl, S, { shot: "s15", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["without", 11.52]] }, { s: 64, w: [["any", 11.78]] }, { s: 136, w: [["script", 12.06, "b", "m"]] }], out: 13, outMode: "fade" });
+          K.text(tl, S, { shot: "s16", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["but", 13.07], ["I'm", 13.16], ["not", 13.34]] }, { s: 124, w: [["mastered", 13.54, "b", "m"]] }, { s: 58, w: [["at", 13.92], ["it", 14.1], ["yet", 14.24]] }], out: 14.38, outMode: "fade" });
+          K.text(tl, S, { shot: "s16", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["I'm", 14.4], ["also", 14.62], ["trying", 14.78]] }, { s: 64, w: [["to", 14.98]] }, { s: 136, w: [["learn", 15.12, "b", "m"]] }], out: 15.32, outMode: "fade" });
+          K.text(tl, S, { shot: "s16", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["so", 15.34], ["once", 15.6], ["I", 16.22], ["see", 16.32], ["I'm", 16.5]] }, { s: 124, w: [["qualified", 16.68, "b", "m"]] }, { s: 64, w: [["enough", 17.02]] }], out: 17.7, outMode: "fade" });
+          K.text(tl, S, { shot: "s16", x: 970, y: 84, a: "tc", lines: [{ s: 58, w: [["maybe", 17.75], ["I'm", 17.88], ["gonna", 18.06]] }, { s: 120, w: [["share", 18.2, "b", "m"], ["it", 18.44]] }, { s: 58, w: [["with", 19.26], ["you", 19.26]] }], outMode: "fade" });
+          /*CAPTIONS:end*/
+
+          window.__timelines["ov-e"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

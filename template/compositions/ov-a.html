@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        @font-face {
+          font-family: "SerifK";
+          src: url("assets/fonts/instrument-serif.woff2") format("woff2");
+          font-weight: 400;
+        }
+        @font-face {
+          font-family: "InterK";
+          src: url("assets/fonts/inter-800.woff2") format("woff2");
+          font-weight: 800;
+        }
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+      </style>
+
+      <div id="root" data-composition-id="ov-a" data-width="1440" data-height="1080">
+        <div class="stage3d" id="oa-stage"></div>
+      </div>
+
+      <script>
+        (function () {
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const S = document.getElementById("oa-stage");
+          const O = 0; // = this host's data-start; caption times inside are local
+          const T = (g) => +(g - O).toFixed(2);
+
+          /*CAPTIONS:start*/
+          // written by caption_script.py — do not edit by hand
+          /*CAPTIONS:end*/
+
+          window.__timelines["ov-a"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

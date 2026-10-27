@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          overflow: visible;
+        }
+        .fx-badge {
+          position: absolute;
+          right: 16px;
+          top: 15px;
+          height: 54px;
+          padding: 0 14px;
+          border-radius: 16px;
+          background: #16171b;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          font: 800 28px InterK, Inter, sans-serif;
+          letter-spacing: -0.03em;
+        }
+        .fx-badge .n {
+          position: relative;
+          width: 1.24em;
+          height: 1em;
+        }
+      </style>
+
+      <div id="root" data-composition-id="fl-fix" data-width="1440" data-height="1080">
+        <div id="fx-wrap" style="position: absolute; inset: 0"></div>
+      </div>
+
+      <script>
+        (function () {
+          /* Two cards of the same workflow.
+             (1) "these all come under expression and help the viewer understand even more" (right of centre):
+                 hands, silences, face — bracketed as EXPRESSION — wired into Understood ✓.
+             (2) "the best way to navigate it" (left of centre, where the first card lived): the fixed workflow.
+                 Write it down ✓ → Speak it slowly ✓ (0.8×) → Watch take 1 ✓ (too fast · no spaces) →
+                 Re-record ×1 → ×30 (the problem labels clear) → Gets easier ✓ on EASIER. */
+          const K = window.HFKit;
+          const el = K.el;
+          const tl = gsap.timeline({ paused: true });
+          const W = document.getElementById("fx-wrap");
+          const O = 55.7;
+          const T = (g) => +(g - O).toFixed(2);
+
+          /* ---------- (1) expression → understood ---------- */
+          const G = { x: 896, y: 404, w: 508, h: 472 };
+          const g = K.fcard(W, G);
+          tl.set(g.box, { height: 318 }, 0);
+          tl.to(g.box, { height: G.h, duration: 0.55, ease: "expo.out" }, T(58.3));
+          const gi = g.inner;
+          tl.fromTo(g.box, { opacity: 0, y: 40, scale: 0.96, filter: "blur(14px)" }, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, T(56.3));
+          const gsvg = K.fsvg(gi, G.w - 28, G.h - 28);
+          const AV = [
+            [104, "assets/frames/hands.jpg"],
+            [240, "assets/frames/silence.jpg"],
+            [376, "assets/frames/face.jpg"],
+          ];
+          AV.forEach(([x, src], i) => {
+            const f = K.fface(gi, { x, y: 92, d: 108, src });
+            tl.fromTo(f, { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.5, ease: "expo.out" }, T(56.92) + i * 0.12);
+          });
+          // "come under": a bracket gathers them; "expression" names the group
+          K.flink(tl, gsvg, { pts: [[50, 166], [50, 190], [430, 190], [430, 166]], r: 14, t: T(57.18), d: 0.5 });
+          K.flink(tl, gsvg, { pts: [[240, 190], [240, 222]], t: T(57.6), d: 0.2 });
+          K.fchip(tl, gi, { x: 240, y: 256, a: "c", text: "expression", cls: "blue", t: T(57.74) });
+          // "and help the viewer understand"
+          K.flink(tl, gsvg, { pts: [[240, 290], [240, 330]], t: T(58.4), d: 0.25 });
+          const und = K.fpill(tl, gi, { x: 240, y: 330, w: 400, label: "Understood" });
+          tl.fromTo(und.el, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, T(58.48));
+          tl.set(und.el, { opacity: 0 }, 0);
+          und.to("run", T(58.6)).spin(T(58.6), T(59.58));
+          und.to("ok", T(59.58));
+          // out before the camera swings you across (s9, 61.15)
+          tl.to(g.box, { opacity: 0, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, T(60.92));
+
+          /* ---------- (2) the fix ---------- */
+          const C = { x: 36, y: 372, w: 520, h: 640 };
+          const card = K.fcard(W, C);
+          const IN = card.inner;
+          tl.set(card.box, { opacity: 0 }, 0);
+          tl.fromTo(card.box, { opacity: 0, y: 40, scale: 0.96, filter: "blur(14px)" }, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out", immediateRender: false }, T(61.45));
+          const PX = 26,
+            PW = 440,
+            ROW = [28, 146, 264, 382, 500];
+          const svgIn = K.fsvg(IN, C.w - 28, C.h - 28);
+          const spine = PX + 44;
+          const P = [
+            K.fpill(tl, IN, { x: PX, y: ROW[0], w: PW, a: "l", label: "Write it down" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[1], w: PW, a: "l", label: "Speak it slowly" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[2], w: PW, a: "l", label: "Watch take 1" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[3], w: PW, a: "l", label: "Re-record" }),
+            K.fpill(tl, IN, { x: PX, y: ROW[4], w: PW, a: "l", label: "Gets easier" }),
+          ];
+          // the whole plan shows up front, pending; each step runs while you say it
+          tl.fromTo(P.map((p) => p.el), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: "expo.out", stagger: 0.07 }, T(61.6));
+          [0, 1, 2, 3].forEach((i) => K.flink(tl, svgIn, { pts: [[spine, ROW[i] + 84], [spine, ROW[i + 1]]], t: T(61.7) + i * 0.07, d: 0.3 }));
+          const svgOut = K.fsvg(W, 1440, 1080);
+          const ox = C.x + 14,
+            oy = C.y + 14;
+          const midY = (i) => oy + ROW[i] + 42;
+
+          P[0].to("run", T(62.5)).spin(T(62.5), T(63.26));
+          P[0].to("ok", T(63.26));
+          P[1].to("run", T(64.34)).spin(T(64.34), T(65.6));
+          P[1].to("ok", T(65.6));
+          K.flink(tl, svgOut, { pts: [[ox + PX + PW, midY(1)], [596, midY(1)]], dash: true, dot0: true, t: T(65.5), d: 0.25 });
+          const slow = K.fchip(tl, W, { x: 600, y: midY(1), text: "0.8×", cls: "lite", t: T(65.6) });
+
+          // "after that first recording, try to understand what the problems were"
+          P[2].to("run", T(69.32)).spin(T(69.32), T(72.0));
+          const pl1 = K.flink(tl, svgOut, { pts: [[ox + PX + PW, midY(2)], [560, midY(2)], [560, midY(2) - 40], [596, midY(2) - 40]], dash: true, dot0: true, r: 12, t: T(71.15), d: 0.3 });
+          const pl2 = K.flink(tl, svgOut, { pts: [[560, midY(2)], [560, midY(2) + 40], [596, midY(2) + 40]], dash: true, r: 12, t: T(71.35), d: 0.25 });
+          const p1 = K.fchip(tl, W, { x: 600, y: midY(2) - 40, text: "too fast", dot: true, t: T(71.24) });
+          const p2 = K.fchip(tl, W, { x: 600, y: midY(2) + 40, text: "no spaces", dot: true, t: T(71.45) });
+          P[2].to("ok", T(72.0));
+          // "just try to re-record it": the re-record clears the problems
+          P[3].to("run", T(73.4)).spin(T(73.4), T(76.7));
+          tl.to([p1, p2, pl1.g, pl2.g, slow], { opacity: 0, x: -14, filter: "blur(8px)", duration: 0.45, ease: "power2.in" }, T(73.6));
+          tl.to(svgOut, { opacity: 0, duration: 0.3, ease: "power1.in" }, T(73.75));
+          const bd = el("div", "fx-badge", P[3].el);
+          bd.innerHTML = '<span class="n"></span><span>×</span>';
+          tl.set(bd, { opacity: 0 }, 0);
+          tl.fromTo(bd, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.4, ease: "expo.out", immediateRender: false }, T(73.6));
+          K.roller(tl, bd.querySelector(".n"), { x: 0, y: 0, size: 28, values: ["1", "10", "15", "20", "30"], times: [0, T(75.34), T(75.72), T(76.04), T(76.38)] });
+          P[3].to("ok", T(76.7));
+          // "it's gonna be much easier for you" — on EASIER
+          P[4].to("run", T(77.0)).spin(T(77.0), T(78.34));
+          P[4].to("ok", T(78.34));
+          tl.to(card.box, { opacity: 0, filter: "blur(10px)", duration: 0.3, ease: "power1.in" }, T(79.3));
+
+          window.__timelines["fl-fix"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>
